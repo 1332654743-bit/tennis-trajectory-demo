@@ -1,0 +1,5050 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>运动分享 Demo</title>
+<style>
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Helvetica Neue', sans-serif;
+  background: #1a1a1a;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+  overflow: hidden;
+}
+
+.phone-frame {
+  width: 390px;
+  height: 844px;
+  background: #000;
+  border-radius: 40px;
+  overflow: hidden;
+  position: relative;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+}
+
+/* Pages */
+.page {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  display: none;
+  overflow: hidden;
+}
+
+.page.active {
+  display: block;
+}
+
+.page > img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: top center;
+  pointer-events: none;
+  user-select: none;
+}
+
+/* Transparent hotspot buttons */
+.hotspot {
+  position: absolute;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  z-index: 10;
+  transition: background 0.15s;
+}
+
+.hotspot:active {
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 8px;
+}
+
+/* Debug mode: uncomment below to see hotspot areas */
+/*
+.hotspot {
+  background: rgba(255, 0, 0, 0.2) !important;
+  border: 1px dashed red !important;
+}
+*/
+
+/* Overlay for bottom sheet */
+.overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 50;
+  display: none;
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+
+.overlay.show {
+  display: block;
+  opacity: 1;
+}
+
+/* Page transitions */
+@keyframes slideInRight {
+  from { transform: translateX(100%); }
+  to { transform: translateX(0); }
+}
+
+@keyframes slideOutRight {
+  from { transform: translateX(0); }
+  to { transform: translateX(100%); }
+}
+
+.page.slide-in {
+  animation: slideInRight 0.3s ease-out forwards;
+}
+
+.page.slide-out {
+  animation: slideOutRight 0.3s ease-in forwards;
+}
+
+/* Bottom sheet page (page2) special handling */
+#page2 {
+  z-index: 60;
+}
+
+/* Tooltip hint on first load */
+.hint-pulse {
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0% { box-shadow: 0 0 0 0 rgba(255, 107, 0, 0.4); }
+  70% { box-shadow: 0 0 0 10px rgba(255, 107, 0, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(255, 107, 0, 0); }
+}
+
+/* ==================== PAGE 3: 选择模板（水印海报） ==================== */
+.p3-page {
+  background: #111 !important;
+  display: flex !important;
+  flex-direction: column;
+}
+
+.p3-page:not(.active) {
+  display: none !important;
+}
+
+.p3-topbar {
+  height: 54px;
+  display: flex;
+  align-items: center;
+  padding: 0 16px;
+  background: #111;
+  flex-shrink: 0;
+  position: relative;
+}
+
+.p3-back {
+  font-size: 22px;
+  color: #fff;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 8px;
+}
+
+.p3-title {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 17px;
+  font-weight: 600;
+  color: #fff;
+}
+
+.p3-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px;
+  scrollbar-width: none;
+}
+
+.p3-content::-webkit-scrollbar {
+  display: none;
+}
+
+.p3-custom-btn {
+  width: 120px;
+  height: 44px;
+  border-radius: 22px;
+  background: #333;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 20px;
+  cursor: pointer;
+}
+
+.p3-custom-icon {
+  font-size: 22px;
+  color: #fff;
+}
+
+.p3-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.p3-template-item {
+  border-radius: 12px;
+  overflow: hidden;
+  cursor: pointer;
+  position: relative;
+  background: #222;
+  transition: transform 0.2s;
+}
+
+.p3-template-item:active {
+  transform: scale(0.96);
+}
+
+.p3-template-item img {
+  width: 100%;
+  display: block;
+}
+
+.p3-tpl-label {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  padding: 8px;
+  font-size: 11px;
+  color: #fff;
+  text-align: center;
+  background: linear-gradient(transparent, rgba(0,0,0,0.7));
+}
+
+
+/* ==================== PAGE 3B: 选择背景 ==================== */
+.p3b-page {
+  background: #111 !important;
+  display: flex !important;
+  flex-direction: column;
+}
+
+.p3b-page:not(.active) {
+  display: none !important;
+}
+
+.p3b-topbar {
+  height: 54px;
+  display: flex;
+  align-items: center;
+  padding: 0 16px;
+  flex-shrink: 0;
+}
+
+.p3b-back {
+  background: none;
+  border: none;
+  color: #fff;
+  font-size: 24px;
+  cursor: pointer;
+  padding: 4px 8px;
+}
+
+.p3b-title {
+  flex: 1;
+  text-align: center;
+  color: #fff;
+  font-size: 17px;
+  font-weight: 600;
+  margin-right: 40px;
+}
+
+.p3b-preview {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  overflow: hidden;
+}
+
+.p3b-canvas {
+  position: relative;
+  width: 70%;
+  aspect-ratio: 3/4;
+  border-radius: 12px;
+  overflow: hidden;
+  background: #222;
+}
+
+.p3b-canvas.transparent-bg {
+  background: repeating-conic-gradient(#ccc 0% 25%, #fff 0% 50%) 50% / 16px 16px;
+}
+
+.p3b-bg-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  position: absolute;
+  top: 0;
+  left: 0;
+}
+
+.p3b-watermarks {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+.p3b-watermarks .p3b-wm-item {
+  position: absolute;
+}
+
+.p3b-watermarks .p3b-wm-item img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+/* 相册弹窗 */
+.p3b-album-modal {
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: #111;
+  z-index: 50;
+  display: none;
+  flex-direction: column;
+}
+
+.p3b-album-modal.show {
+  display: flex;
+}
+
+.p3b-album-topbar {
+  height: 54px;
+  display: flex;
+  align-items: center;
+  padding: 0 16px;
+  flex-shrink: 0;
+}
+
+.p3b-album-back {
+  background: none;
+  border: none;
+  color: #fff;
+  font-size: 24px;
+  cursor: pointer;
+  padding: 4px 8px;
+}
+
+.p3b-album-title {
+  flex: 1;
+  text-align: center;
+  color: #fff;
+  font-size: 17px;
+  font-weight: 600;
+  margin-right: 40px;
+}
+
+.p3b-album-grid {
+  flex: 1;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 2px;
+  padding: 2px;
+  overflow-y: auto;
+}
+
+.p3b-album-grid .p3b-album-item {
+  aspect-ratio: 1;
+  cursor: pointer;
+  overflow: hidden;
+}
+
+.p3b-album-grid .p3b-album-item img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: opacity 0.15s;
+}
+
+.p3b-album-grid .p3b-album-item:active img {
+  opacity: 0.7;
+}
+
+.p3b-panel {
+  background: #2c2c2e;
+  border-radius: 16px 16px 0 0;
+  padding: 14px 16px 20px;
+  flex-shrink: 0;
+}
+
+.p3b-panel-header {
+  display: flex;
+  align-items: center;
+  margin-bottom: 14px;
+}
+
+.p3b-panel-close,
+.p3b-panel-confirm {
+  width: 32px;
+  height: 32px;
+  border-radius: 16px;
+  border: none;
+  background: transparent;
+  font-size: 18px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.p3b-panel-close {
+  color: #fff;
+}
+
+.p3b-panel-confirm {
+  color: #fff;
+}
+
+.p3b-panel-title {
+  flex: 1;
+  text-align: center;
+  color: #fff;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.p3b-preset-scroll {
+  display: flex;
+  gap: 10px;
+  overflow-x: auto;
+  padding-bottom: 12px;
+}
+
+.p3b-preset-item {
+  flex-shrink: 0;
+  width: 100px;
+  height: 80px;
+  border-radius: 10px;
+  overflow: hidden;
+  cursor: pointer;
+  border: 3px solid transparent;
+  transition: border-color 0.2s;
+}
+
+.p3b-preset-item.selected {
+  border-color: #ff6b00;
+}
+
+.p3b-preset-item img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.p3b-bottom-btns {
+  display: flex;
+  gap: 12px;
+}
+
+.p3b-album-btn,
+.p3b-transparent-btn {
+  flex: 1;
+  height: 40px;
+  border-radius: 20px;
+  border: 1px solid #555;
+  background: #1c1c1e;
+  color: #fff;
+  font-size: 13px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.p3b-album-btn:active,
+.p3b-transparent-btn:active {
+  background: #3a3a3c;
+}
+
+.p3b-album-icon,
+.p3b-transparent-icon {
+  font-size: 16px;
+}
+
+
+/* ==================== PAGE 3C: 预览海报页面 ==================== */
+.p3c-page {
+  background: #111 !important;
+  display: flex !important;
+  flex-direction: column;
+}
+
+.p3c-page:not(.active) {
+  display: none !important;
+}
+
+.p3c-topbar {
+  height: 54px;
+  display: flex;
+  align-items: center;
+  padding: 0 16px;
+  flex-shrink: 0;
+}
+
+.p3c-back {
+  background: none;
+  border: none;
+  color: #fff;
+  font-size: 24px;
+  cursor: pointer;
+  padding: 4px 8px;
+}
+
+.p3c-title {
+  flex: 1;
+  text-align: center;
+  color: #fff;
+  font-size: 17px;
+  font-weight: 600;
+}
+
+.p3c-share {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+}
+
+.p3c-share img {
+  height: 32px;
+  display: block;
+}
+
+.p3c-share:active {
+  opacity: 0.8;
+}
+
+.p3c-preview {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  overflow: hidden;
+}
+
+.p3c-canvas {
+  position: relative;
+  width: 70%;
+  aspect-ratio: 3/4;
+  border-radius: 12px;
+  overflow: hidden;
+  background: #222;
+}
+
+.p3c-canvas.transparent-bg {
+  background: repeating-conic-gradient(#ccc 0% 25%, #fff 0% 50%) 50% / 16px 16px;
+}
+
+.p3c-bg-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  position: absolute;
+  top: 0;
+  left: 0;
+}
+
+.p3c-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 24px;
+  padding: 16px 0 32px;
+  flex-shrink: 0;
+}
+
+.p3c-tool-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+}
+
+.p3c-tool-btn img {
+  height: 44px;
+  display: block;
+}
+
+.p3c-tool-btn.p3c-tool-add img {
+  height: 44px;
+}
+
+/* ==================== 背景特效 ==================== */
+/* 3D 嵌入特效：主体蒙版层覆盖水印 */
+.effect-mask {
+  position: absolute;
+  pointer-events: none;
+  z-index: 16;
+}
+
+/* 模糊/拖影特效：方向性运动模糊 */
+.effect-blur img[id$="-bg-img"] {
+  filter: url(#motion-blur-filter);
+}
+
+/* 马赛克特效 */
+.effect-mosaic img[id$="-bg-img"] {
+  filter: url(#mosaic-filter);
+}
+
+/* CCD特效：复古胶片感 + 圆角白边框 */
+.effect-ccd {
+  border: 6px solid #fff;
+  border-radius: 16px;
+  overflow: hidden;
+}
+.effect-ccd img[id$="-bg-img"] {
+  filter: saturate(1.4) contrast(1.1) brightness(1.05);
+  border-radius: 10px;
+}
+
+
+/* 背景裁剪弹窗 */
+.wm-crop-modal {
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: #111;
+  z-index: 85;
+  display: none;
+  flex-direction: column;
+}
+
+.wm-crop-modal.show {
+  display: flex;
+}
+
+.wm-crop-topbar {
+  height: 54px;
+  display: flex;
+  align-items: center;
+  padding: 0 16px;
+  flex-shrink: 0;
+}
+
+.wm-crop-back {
+  background: none;
+  border: none;
+  color: #fff;
+  font-size: 24px;
+  cursor: pointer;
+  padding: 4px 8px;
+}
+
+.wm-crop-title {
+  flex: 1;
+  text-align: center;
+  color: #fff;
+  font-size: 17px;
+  font-weight: 600;
+  margin-right: 40px;
+}
+
+.wm-crop-preview {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  overflow: hidden;
+}
+
+.wm-crop-canvas {
+  position: relative;
+  width: 70%;
+  aspect-ratio: 3/4;
+  border-radius: 12px;
+  overflow: hidden;
+  background: #222;
+  transition: aspect-ratio 0.3s ease;
+  touch-action: none;
+}
+
+.wm-crop-bg {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  position: absolute;
+  top: 0; left: 0;
+  cursor: grab;
+  touch-action: none;
+  transition: none;
+}
+
+.wm-crop-bg.dragging {
+  cursor: grabbing;
+}
+
+.wm-crop-watermarks {
+  position: absolute;
+  top: 0; left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+.wm-crop-watermarks .wm-crop-wm-item {
+  position: absolute;
+}
+
+.wm-crop-watermarks .wm-crop-wm-item img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.wm-crop-bar {
+  display: flex;
+  align-items: center;
+  padding: 10px 16px;
+  flex-shrink: 0;
+}
+
+.wm-crop-cancel,
+.wm-crop-confirm {
+  width: 36px;
+  height: 36px;
+  border-radius: 18px;
+  border: none;
+  background: transparent;
+  font-size: 20px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.wm-crop-cancel {
+  color: #fff;
+}
+
+.wm-crop-confirm {
+  color: #30d158;
+}
+
+.wm-crop-bar-title {
+  flex: 1;
+  text-align: center;
+  color: #fff;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.wm-crop-options {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 20px;
+  padding: 8px 16px 24px;
+  flex-shrink: 0;
+}
+
+.wm-crop-opt {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  background: none;
+  border: none;
+  color: #888;
+  cursor: pointer;
+  font-size: 12px;
+  padding: 6px 10px;
+  border-radius: 8px;
+  transition: color 0.2s;
+}
+
+.wm-crop-opt.active {
+  color: #fff;
+}
+
+.wm-crop-opt:disabled {
+  color: #444;
+  cursor: not-allowed;
+}
+
+.wm-crop-opt-icon {
+  font-size: 22px;
+}
+
+.wm-crop-opt-label {
+  font-size: 11px;
+}
+
+/* 水印画布 */
+.wm-canvas {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 15;
+}
+
+.wm-canvas .wm-item {
+  position: absolute;
+  pointer-events: auto;
+  cursor: grab;
+  user-select: none;
+  touch-action: none;
+}
+
+.wm-canvas .wm-item .wm-item-img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  pointer-events: none;
+}
+
+.wm-canvas .wm-item.dragging {
+  cursor: grabbing;
+  opacity: 0.9;
+}
+
+/* 选中状态 - 虚线边框 + 四角按钮 */
+.wm-canvas .wm-item.selected {
+  outline: 1.5px dashed rgba(255,255,255,0.8);
+  outline-offset: 4px;
+}
+
+.wm-item-btn {
+  position: absolute;
+  width: 24px;
+  height: 24px;
+  border-radius: 12px;
+  background: rgba(50,50,50,0.9);
+  border: 1.5px solid rgba(255,255,255,0.6);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  color: #fff;
+  cursor: pointer;
+  z-index: 10;
+}
+
+.wm-item.selected .wm-item-btn {
+  display: flex;
+}
+
+.wm-btn-delete { top: -12px; left: -12px; }
+.wm-btn-edit   { top: -12px; right: -12px; }
+.wm-btn-move   { bottom: -12px; left: -12px; }
+.wm-btn-resize { bottom: -12px; right: -12px; }
+
+.wm-btn-delete:active,
+.wm-btn-edit:active,
+.wm-btn-move:active,
+.wm-btn-resize:active {
+  background: rgba(255,107,0,0.8);
+}
+
+/* 编辑模式下"编辑"按钮变为"完成" */
+.wm-item.editing .wm-btn-edit {
+  background: rgba(255,107,0,0.85);
+  width: auto;
+  padding: 0 6px;
+  font-size: 9px;
+  border-radius: 10px;
+  right: -16px;
+  top: -14px;
+}
+
+/* 弹窗覆盖层 */
+.wm-panel-overlay {
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0,0,0,0.5);
+  z-index: 80;
+  display: none;
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+
+.wm-panel-overlay.show {
+  display: block;
+  opacity: 1;
+}
+
+.wm-panel {
+  position: absolute;
+  left: 0; right: 0;
+  bottom: 0;
+  height: 70%;
+  background: #1c1c1e;
+  border-radius: 16px 16px 0 0;
+  z-index: 90;
+  display: flex;
+  flex-direction: column;
+  transform: translateY(100%);
+  transition: transform 0.35s cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+.wm-panel.show {
+  transform: translateY(0);
+}
+
+.wm-panel-handle {
+  width: 36px;
+  height: 4px;
+  background: #555;
+  border-radius: 2px;
+  margin: 10px auto 6px;
+  cursor: grab;
+}
+
+.wm-panel-header {
+  padding: 0 16px 10px;
+  flex-shrink: 0;
+}
+
+.wm-panel-title {
+  display: block;
+  color: #fff;
+  font-size: 16px;
+  font-weight: 600;
+  text-align: center;
+  margin-bottom: 12px;
+}
+
+.wm-panel-tabs {
+  display: flex;
+  gap: 0;
+}
+
+.wm-tab {
+  flex: 1;
+  text-align: center;
+  padding: 8px 0;
+  color: #888;
+  font-size: 14px;
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  transition: color 0.2s, border-color 0.2s;
+}
+
+.wm-tab.active {
+  color: #fff;
+  border-bottom-color: #fff;
+}
+
+.wm-panel-grid {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: 12px;
+}
+
+.wm-grid-item {
+  border-radius: 12px;
+  overflow: hidden;
+  cursor: pointer;
+  background: #222;
+  transition: transform 0.2s;
+}
+
+.wm-grid-item:active {
+  transform: scale(0.96);
+}
+
+.wm-grid-item img {
+  width: 100%;
+  display: block;
+}
+
+.wm-grid-item .wm-label {
+  padding: 6px 4px;
+  font-size: 11px;
+  color: #aaa;
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* 画布内工具按钮组 */
+.p3c-canvas-tools {
+  display: flex;
+  justify-content: center;
+  gap: 24px;
+  padding: 16px 0;
+  flex-shrink: 0;
+}
+
+.p3c-canvas-tools button {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+}
+
+.p3c-canvas-tools button img {
+  width: 40px;
+  height: 40px;
+}
+
+/* 撤回按钮 */
+.wm-undo-btn {
+  display: none;
+}
+
+.wm-undo-btn.visible {
+  display: block;
+}
+
+/* 全屏预览按钮 */
+.wm-fullscreen-btn {
+  display: block;
+}
+
+/* 全屏遮罩 - 透明，覆盖整个页面用于接收点击退出全屏 */
+.wm-fullscreen-overlay {
+  position: absolute;
+  top: 0;
+  left: 0; right: 0;
+  bottom: 0;
+  z-index: 76;
+  display: none;
+  cursor: pointer;
+}
+
+/* 全屏模式 - 隐藏所有工具UI */
+#page3c.wm-fullscreen .p3c-canvas-tools,
+#page3c.wm-fullscreen .p3c-toolbar,
+#page3c.wm-fullscreen .p3c-topbar {
+  display: none !important;
+}
+
+#page3c.wm-fullscreen .wm-canvas .wm-item .wm-item-btn {
+  display: none !important;
+}
+
+#page3c.wm-fullscreen .wm-canvas .wm-item.selected {
+  outline: none !important;
+}
+
+#page3c.wm-fullscreen .wm-fullscreen-overlay {
+  display: block;
+}
+
+/* 颜色编辑按钮 */
+.wm-color-btn {
+  display: none;
+}
+
+.wm-color-btn.visible {
+  display: block;
+}
+
+.wm-color-btn:active {
+  opacity: 0.7;
+}
+
+/* 颜色编辑栏 */
+.wm-color-bar {
+  position: absolute;
+  bottom: 50px;
+  left: 0; right: 0;
+  height: 44px;
+  background: rgba(50,50,50,0.95);
+  display: none;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 16px;
+  z-index: 75;
+}
+
+.wm-color-bar.show {
+  display: flex;
+}
+
+.wm-color-bar-close,
+.wm-color-bar-confirm {
+  width: 32px;
+  height: 32px;
+  border-radius: 16px;
+  border: none;
+  font-size: 16px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.wm-color-bar-close {
+  background: transparent;
+  color: #fff;
+}
+
+.wm-color-bar-confirm {
+  background: transparent;
+  color: #30d158;
+}
+
+.wm-color-bar-center {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.wm-color-picker-btn {
+  width: 24px;
+  height: 24px;
+  border-radius: 12px;
+  border: 1.5px solid #888;
+  background: #2c2c2e;
+  color: #fff;
+  font-size: 12px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.wm-color-picker-btn.active {
+  border-color: #30d158;
+  background: #1a3a1a;
+}
+
+.wm-color-bar-title {
+  color: #fff;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+/* 颜色预设 */
+.wm-color-presets {
+  position: absolute;
+  bottom: 0;
+  left: 0; right: 0;
+  height: 50px;
+  background: rgba(50,50,50,0.95);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 0 12px;
+  flex-wrap: wrap;
+  z-index: 75;
+  overflow-x: auto;
+}
+
+.wm-color-presets.show {
+  display: flex;
+}
+
+.wm-color-dot {
+  width: 24px;
+  height: 24px;
+  border-radius: 12px;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: transform 0.15s, box-shadow 0.15s;
+}
+
+.wm-color-dot:active,
+.wm-color-dot.selected {
+  transform: scale(1.3);
+  box-shadow: 0 0 0 2px #fff;
+}
+
+/* 取色器 */
+.wm-eyedropper {
+  position: absolute;
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  z-index: 70;
+  display: none;
+  cursor: grab;
+  touch-action: none;
+}
+
+.wm-eyedropper.show {
+  display: block;
+}
+
+.wm-eyedropper-ring {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  border: 3px solid rgba(255,255,255,0.8);
+  box-shadow: 0 0 10px rgba(0,0,0,0.5), inset 0 0 10px rgba(0,0,0,0.2);
+}
+
+.wm-eyedropper-crosshair {
+  position: absolute;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  color: #fff;
+  font-size: 20px;
+  font-weight: 300;
+  text-shadow: 0 0 4px rgba(0,0,0,0.8);
+  pointer-events: none;
+}
+
+/* Toast 提示 */
+.wm-toast {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: rgba(0,0,0,0.85);
+  color: #fff;
+  padding: 12px 24px;
+  border-radius: 8px;
+  font-size: 14px;
+  z-index: 200;
+  display: none;
+  opacity: 0;
+  transition: opacity 0.3s;
+  pointer-events: none;
+}
+
+.wm-toast.show {
+  display: block;
+  opacity: 1;
+}
+
+/* 分享弹窗 page3d */
+.p3d-share-page {
+  background: #000 !important;
+}
+
+.p3d-share-bg {
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0,0,0,0.7);
+}
+
+.p3d-share-panel {
+  position: absolute;
+  bottom: 0;
+  left: 0; right: 0;
+  background: #2c2c2e;
+  border-radius: 16px 16px 0 0;
+  padding: 16px 16px 32px;
+}
+
+.p3d-share-header {
+  display: flex;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.p3d-share-close {
+  width: 36px;
+  height: 36px;
+  border-radius: 18px;
+  border: none;
+  background: #3a3a3c;
+  color: #fff;
+  font-size: 18px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.p3d-share-title {
+  flex: 1;
+  text-align: center;
+  color: #fff;
+  font-size: 16px;
+  font-weight: 600;
+  margin-right: 36px;
+}
+
+.p3d-share-options {
+  display: flex;
+  justify-content: center;
+  gap: 24px;
+}
+
+.p3d-share-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+}
+
+.p3d-share-item span {
+  color: #aaa;
+  font-size: 12px;
+}
+
+.p3d-share-icon {
+  width: 52px;
+  height: 52px;
+  border-radius: 26px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22px;
+  color: #fff;
+}
+
+/* 退出确认弹窗 */
+.wm-exit-dialog {
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0,0,0,0.6);
+  z-index: 200;
+  display: none;
+  align-items: flex-end;
+  justify-content: center;
+}
+
+.wm-exit-dialog.show {
+  display: flex;
+}
+
+.wm-exit-dialog-card {
+  width: 100%;
+  background: #2c2c2e;
+  border-radius: 16px 16px 0 0;
+  padding: 28px 20px 32px;
+  text-align: center;
+}
+
+.wm-exit-dialog-title {
+  color: #fff;
+  font-size: 18px;
+  font-weight: 600;
+  margin-bottom: 20px;
+}
+
+.wm-exit-dialog-btns {
+  display: flex;
+  gap: 12px;
+}
+
+.wm-exit-btn-confirm,
+.wm-exit-btn-cancel {
+  flex: 1;
+  height: 44px;
+  border-radius: 22px;
+  border: none;
+  font-size: 15px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.wm-exit-btn-confirm {
+  background: #3a3a3c;
+  color: #fff;
+}
+
+.wm-exit-btn-cancel {
+  background: #ff6b00;
+  color: #fff;
+}
+
+/* 编辑弹窗 - 数据/图表选择 */
+.wm-edit-modal {
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0,0,0,0.7);
+  z-index: 100;
+  display: none;
+  flex-direction: column;
+  justify-content: flex-end;
+}
+
+.wm-edit-modal.show {
+  display: flex;
+}
+
+.wm-edit-modal-content {
+  background: #1c1c1e;
+  border-radius: 16px 16px 0 0;
+  padding: 16px;
+  max-height: 50%;
+  display: flex;
+  flex-direction: column;
+}
+
+.wm-edit-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.wm-edit-modal-header .wm-edit-cancel,
+.wm-edit-modal-header .wm-edit-confirm {
+  width: 32px;
+  height: 32px;
+  border-radius: 16px;
+  border: none;
+  font-size: 16px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.wm-edit-cancel {
+  background: #3a3a3c;
+  color: #ff453a;
+}
+
+.wm-edit-confirm {
+  background: #3a3a3c;
+  color: #30d158;
+}
+
+.wm-edit-modal-title {
+  color: #fff;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.wm-edit-modal-grid {
+  overflow-y: auto;
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 8px;
+}
+
+.wm-edit-option {
+  background: #2c2c2e;
+  border-radius: 8px;
+  padding: 10px 6px;
+  text-align: center;
+  cursor: pointer;
+  border: 2px solid transparent;
+  transition: border-color 0.2s;
+}
+
+.wm-edit-option.selected {
+  border-color: #ff6b00;
+}
+
+.wm-edit-option span {
+  display: block;
+  color: #ccc;
+  font-size: 11px;
+  margin-top: 4px;
+}
+
+
+/* ==================== PAGE 4: 轨迹视频编辑 ==================== */
+.p4-page {
+  background: #111 !important;
+  overflow: visible !important;
+}
+
+.p4-topbar {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 54px;
+  display: flex;
+  align-items: center;
+  padding: 0 16px;
+  background: #111;
+  z-index: 10;
+}
+
+.p4-back {
+  font-size: 22px;
+  color: #fff;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 8px;
+}
+
+.p4-title {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 17px;
+  font-weight: 600;
+  color: #fff;
+}
+
+.p4-share-btn {
+  position: absolute;
+  right: 16px;
+  background: #ff6b00;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  padding: 7px 16px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.p4-preview-area {
+  position: absolute;
+  top: 54px;
+  left: 0;
+  right: 0;
+  bottom: 180px;
+  overflow: hidden;
+}
+
+.p4-video-el {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  background: #000;
+}
+
+.p4-play-btn {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22px;
+  color: #fff;
+  cursor: pointer;
+  backdrop-filter: blur(4px);
+}
+
+.p4-play-btn.playing {
+  opacity: 0;
+}
+
+.p4-progress-bar {
+  position: absolute;
+  bottom: 12px;
+  left: 16px;
+  right: 16px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.p4-time {
+  font-size: 11px;
+  color: #fff;
+  min-width: 32px;
+}
+
+.p4-progress-track {
+  flex: 1;
+  height: 3px;
+  background: rgba(255,255,255,0.3);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.p4-progress-fill {
+  width: 50%;
+  height: 100%;
+  background: #fff;
+  border-radius: 2px;
+}
+
+/* Edit area for page 4 */
+.p4-edit-area {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 180px;
+  background: #2a2a2a;
+  border-top: 1px solid #333;
+  display: flex;
+  flex-direction: column;
+}
+
+.p4-tabs {
+  display: flex;
+  border-bottom: 1px solid #444;
+  flex-shrink: 0;
+}
+
+.p4-tab {
+  flex: 1;
+  padding: 12px 0;
+  text-align: center;
+  font-size: 13px;
+  color: #888;
+  cursor: pointer;
+  position: relative;
+}
+
+.p4-tab.active {
+  color: #fff;
+  font-weight: 500;
+}
+
+.p4-tab.active::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 30%;
+  width: 40%;
+  height: 2px;
+  background: #fff;
+  border-radius: 1px;
+}
+
+.p4-tags-wrapper {
+  padding: 12px;
+  flex: 1;
+  overflow-y: auto;
+  scrollbar-width: none;
+}
+
+.p4-tags-wrapper::-webkit-scrollbar {
+  display: none;
+}
+
+.p4-tag-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+/* Photo add */
+.p4-photo-hint {
+  font-size: 12px;
+  color: #888;
+  width: 100%;
+  margin-bottom: 8px;
+}
+
+.p4-photo-add {
+  width: 60px;
+  height: 60px;
+  border-radius: 8px;
+  background: #444;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 28px;
+  color: #aaa;
+  cursor: pointer;
+  border: 1px dashed #666;
+}
+
+/* Map options (reuse p5 style but with p4 prefix) */
+.p4-map-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.p4-map-opt {
+  width: 60px;
+  height: 60px;
+  border-radius: 12px;
+  background: #444;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  color: #aaa;
+  cursor: pointer;
+  border: 2px solid transparent;
+}
+
+.p4-map-opt.selected {
+  border-color: #ff6b00;
+  color: #fff;
+}
+
+.p4-map-section {
+  width: 100%;
+}
+
+.p4-map-section-title {
+  font-size: 12px;
+  color: #888;
+  margin-bottom: 8px;
+}
+
+/* Music options */
+.p4-music-opt {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 7px 12px;
+  border-radius: 18px;
+  font-size: 12px;
+  cursor: pointer;
+  border: 1px solid #555;
+  color: #aaa;
+  background: #333;
+  transition: all 0.2s;
+  user-select: none;
+}
+
+.p4-music-opt.selected {
+  background: #fff;
+  color: #111;
+  border-color: #fff;
+}
+
+/* Recording indicator */
+.p4-recording-indicator {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(0,0,0,0.6);
+  padding: 12px 24px;
+  border-radius: 24px;
+}
+
+.p4-rec-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #ff3b30;
+  animation: recBlink 1s infinite;
+}
+
+@keyframes recBlink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.3; }
+}
+
+.p4-rec-text {
+  font-size: 14px;
+  color: #fff;
+  font-weight: 500;
+}
+
+/* ==================== PAGE 4D: 添加图片 ==================== */
+.p4d-page {
+  background: #111 !important;
+  display: flex !important;
+  flex-direction: column;
+}
+
+.p4d-page:not(.active) {
+  display: none !important;
+}
+
+.p4d-topbar {
+  height: 54px;
+  display: flex;
+  align-items: center;
+  padding: 0 16px;
+  background: #111;
+  flex-shrink: 0;
+  position: relative;
+}
+
+.p4d-back {
+  font-size: 22px;
+  color: #fff;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 8px;
+}
+
+.p4d-title {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 17px;
+  font-weight: 600;
+  color: #fff;
+}
+
+.p4d-add-btn {
+  position: absolute;
+  right: 16px;
+  background: #ff6b00;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  padding: 7px 16px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.p4d-hint {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  background: #333;
+  flex-shrink: 0;
+}
+
+.p4d-hint-icon {
+  font-size: 16px;
+  color: #aaa;
+}
+
+.p4d-hint-text {
+  font-size: 13px;
+  color: #ccc;
+}
+
+.p4d-grid {
+  flex: 1;
+  overflow-y: auto;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 2px;
+  padding: 2px;
+  scrollbar-width: none;
+}
+
+.p4d-grid::-webkit-scrollbar {
+  display: none;
+}
+
+.p4d-photo-item {
+  aspect-ratio: 1;
+  position: relative;
+  cursor: pointer;
+  overflow: hidden;
+}
+
+.p4d-photo-item img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.p4d-photo-check {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.4);
+  border: 2px solid #fff;
+}
+
+.p4d-photo-item.selected .p4d-photo-check {
+  background: #1890ff;
+  border-color: #1890ff;
+}
+
+.p4d-photo-item.selected .p4d-photo-check::after {
+  content: '✓';
+  color: #fff;
+  font-size: 12px;
+  font-weight: bold;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+}
+
+/* Loading overlay */
+.p4d-loading {
+  position: absolute;
+  inset: 0;
+  background: rgba(0,0,0,0.7);
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  z-index: 20;
+}
+
+.p4d-loading.active {
+  display: flex;
+}
+
+.p4d-spinner {
+  width: 44px;
+  height: 44px;
+  border: 3px solid rgba(255,255,255,0.2);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.p4d-loading-text {
+  font-size: 13px;
+  color: #ccc;
+}
+
+/* Photo thumbnails in edit area */
+.p4-photo-thumbs {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.p4-photo-thumbs::-webkit-scrollbar {
+  display: none;
+}
+
+.p4-photo-thumb {
+  width: 60px;
+  height: 60px;
+  border-radius: 8px;
+  overflow: hidden;
+  flex-shrink: 0;
+  position: relative;
+}
+
+.p4-photo-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.p4-photo-thumb-remove {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: rgba(0,0,0,0.6);
+  color: #fff;
+  font-size: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+/* ==================== PAGE 5: 运动报告编辑（模块化） ==================== */
+#page5 {
+  background: #111 !important;
+  overflow: visible !important;
+}
+
+.p5-topbar {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 54px;
+  display: flex;
+  align-items: center;
+  padding: 0 16px;
+  background: #111;
+  z-index: 10;
+}
+
+.p5-back {
+  font-size: 22px;
+  color: #fff;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 8px;
+}
+
+.p5-title {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 17px;
+  font-weight: 600;
+  color: #fff;
+}
+
+.p5-share-btn {
+  position: absolute;
+  right: 16px;
+  background: #ff6b00;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  padding: 7px 16px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.p5-preview-area {
+  position: absolute;
+  top: 54px;
+  left: 0;
+  right: 0;
+  bottom: 200px;
+  padding: 12px 20px;
+  overflow: hidden;
+}
+
+.p5-scroll-hint {
+  position: absolute;
+  bottom: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  color: #333;
+  font-size: 14px;
+  font-weight: 500;
+  z-index: 5;
+  pointer-events: none;
+  transition: opacity 0.3s;
+  background: rgba(255,255,255,0.85);
+  padding: 4px 16px 6px;
+  border-radius: 12px;
+}
+
+.p5-scroll-hint.hidden {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.p5-scroll-hint .hint-arrow {
+  font-size: 16px;
+  line-height: 1;
+  margin-bottom: 2px;
+  animation: bounceUp 1.5s infinite;
+}
+
+@keyframes bounceUp {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-4px); }
+}
+
+.p5-report-card {
+  width: 100%;
+  height: 100%;
+  background: #fff;
+  border-radius: 16px;
+  overflow-y: scroll;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+  color: #111;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+  scrollbar-width: none;
+}
+
+.p5-report-card::-webkit-scrollbar {
+  display: none;
+}
+
+.p5-report-card.no-scroll {
+  overflow-y: hidden;
+}
+
+/* Subdata grid */
+.p5-subdata {
+  padding: 8px 14px 4px;
+  background: #fff;
+  display: flex;
+  flex-wrap: wrap;
+}
+
+.p5-subdata-item {
+  width: 33.33%;
+  padding: 10px 0;
+  transition: all 0.2s;
+}
+
+.p5-subdata-item.hidden {
+  display: none;
+}
+
+.sd-val {
+  font-size: 20px;
+  font-weight: 700;
+  color: #111;
+}
+
+.sd-val small {
+  font-size: 11px;
+  font-weight: 400;
+  color: #666;
+}
+
+.sd-lbl {
+  font-size: 11px;
+  color: #888;
+  margin-top: 2px;
+}
+
+/* Module images */
+.p5-module-img {
+  width: 100%;
+  display: block;
+  user-select: none;
+  -webkit-user-drag: none;
+}
+
+/* Module visibility */
+.p5-module {
+  transition: all 0.3s;
+}
+
+.p5-module.hidden {
+  display: none;
+}
+
+/* ==================== Edit Area ==================== */
+.p5-edit-area {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 200px;
+  background: #2a2a2a;
+  border-top: 1px solid #333;
+  display: flex;
+  flex-direction: column;
+}
+
+.p5-tabs {
+  display: flex;
+  border-bottom: 1px solid #444;
+  flex-shrink: 0;
+}
+
+.p5-tab {
+  flex: 1;
+  padding: 12px 0;
+  text-align: center;
+  font-size: 13px;
+  color: #888;
+  cursor: pointer;
+  position: relative;
+}
+
+.p5-tab.active {
+  color: #fff;
+  font-weight: 500;
+}
+
+.p5-tab.active::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 30%;
+  width: 40%;
+  height: 2px;
+  background: #fff;
+  border-radius: 1px;
+}
+
+.p5-tags-wrapper {
+  padding: 12px;
+  flex: 1;
+  overflow-y: auto;
+  scrollbar-width: none;
+}
+
+.p5-tags-wrapper::-webkit-scrollbar {
+  display: none;
+}
+
+.p5-tag-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.p5-tag {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 7px 12px;
+  border-radius: 18px;
+  font-size: 12px;
+  cursor: pointer;
+  border: 1px solid #555;
+  color: #aaa;
+  background: #333;
+  transition: all 0.2s;
+  user-select: none;
+}
+
+.p5-tag.selected {
+  background: #fff;
+  color: #111;
+  border-color: #fff;
+}
+
+/* Map options */
+.p5-map-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.p5-map-opt {
+  width: 60px;
+  height: 60px;
+  border-radius: 12px;
+  background: #444;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  color: #aaa;
+  cursor: pointer;
+  border: 2px solid transparent;
+}
+
+.p5-map-opt.selected {
+  border-color: #ff6b00;
+  color: #fff;
+}
+
+.p5-map-section-title {
+  font-size: 12px;
+  color: #888;
+  margin-bottom: 8px;
+}
+
+.p5-map-section {
+  width: 100%;
+}
+
+/* Responsive - full screen on mobile */
+@media (max-width: 420px) {
+  body {
+    align-items: flex-start;
+  }
+  .phone-frame {
+    width: 100vw;
+    height: 100vh;
+    border-radius: 0;
+  }
+}
+</style>
+</head>
+<body>
+
+<!-- SVG 特效滤镜 -->
+<svg style="position:absolute;width:0;height:0;overflow:hidden;">
+  <defs>
+    <filter id="motion-blur-filter">
+      <feGaussianBlur in="SourceGraphic" stdDeviation="8,0" />
+    </filter>
+    <filter id="mosaic-filter" x="0" y="0" width="100%" height="100%">
+      <feFlood x="4" y="4" width="4" height="4" />
+      <feComposite width="8" height="8" />
+      <feTile result="tiles" />
+      <feComposite in="SourceGraphic" in2="tiles" operator="in" />
+      <feMorphology operator="dilate" radius="4" />
+    </filter>
+  </defs>
+</svg>
+
+<div class="phone-frame">
+
+  <!-- PAGE 1: 运动报告页 -->
+  <div id="page1" class="page active">
+    <img src="images/page1-report.png" alt="运动报告">
+    <!-- 分享按钮热区 -->
+    <button class="hotspot hint-pulse" id="btn-share" style="
+      bottom: 53%;
+      right: 4%;
+      width: 80px;
+      height: 40px;
+      border-radius: 20px;
+    "></button>
+  </div>
+
+  <!-- PAGE 2: 分享样式选择弹窗 -->
+  <div id="page2" class="page">
+    <img src="images/page2-share-sheet.png" alt="分享样式选择">
+    <!-- 关闭按钮热区 -->
+    <button class="hotspot" id="btn-close" style="
+      bottom: 19%;
+      right: 5%;
+      width: 50px;
+      height: 50px;
+      border-radius: 25px;
+    "></button>
+    <!-- 水印海报热区 -->
+    <button class="hotspot" id="btn-watermark" style="
+      bottom: 3%;
+      left: 4%;
+      width: 30%;
+      height: 13%;
+      border-radius: 12px;
+    "></button>
+    <!-- 轨迹视频热区 -->
+    <button class="hotspot" id="btn-video" style="
+      bottom: 3%;
+      left: 36%;
+      width: 30%;
+      height: 13%;
+      border-radius: 12px;
+    "></button>
+    <!-- 运动报告热区 -->
+    <button class="hotspot" id="btn-report-edit" style="
+      bottom: 3%;
+      right: 4%;
+      width: 30%;
+      height: 13%;
+      border-radius: 12px;
+    "></button>
+  </div>
+
+  <!-- PAGE 3: 选择模板（水印海报） -->
+  <div id="page3" class="page p3-page">
+    <div class="p3-topbar">
+      <button class="p3-back" id="btn-template-back">←</button>
+      <span class="p3-title">选择模板</span>
+    </div>
+    <div class="p3-content">
+      <div class="p3-custom-btn" id="btn-custom-watermark">
+        <span class="p3-custom-icon">＋</span>
+      </div>
+      <div class="p3-grid">
+        <div class="p3-template-item" data-tpl="1">
+          <img src="images/template-1.png" alt="普通模板">
+          <div class="p3-tpl-label">普通模板</div>
+        </div>
+        <div class="p3-template-item" data-tpl="2">
+          <img src="images/template-2.png" alt="3D嵌入特效模板">
+          <div class="p3-tpl-label">3D 嵌入特效模板</div>
+        </div>
+        <div class="p3-template-item" data-tpl="3">
+          <img src="images/template-3.png" alt="动态模糊特效模板">
+          <div class="p3-tpl-label">动态模糊特效模板</div>
+        </div>
+        <div class="p3-template-item" data-tpl="4">
+          <img src="images/template-4.png" alt="马赛克特效模板">
+          <div class="p3-tpl-label">马赛克特效模板</div>
+        </div>
+        <div class="p3-template-item" data-tpl="5">
+          <img src="images/template-5.png" alt="CCD特效模板">
+          <div class="p3-tpl-label">CCD 特效模板</div>
+        </div>
+        <div class="p3-template-item" data-tpl="6">
+          <img src="images/template-6.png" alt="普通模板">
+          <div class="p3-tpl-label">普通模板</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PAGE 3B: 选择背景（代码渲染） -->
+  <div id="page3b" class="page p3b-page">
+    <!-- 顶部栏 -->
+    <div class="p3b-topbar">
+      <button class="p3b-back" id="btn-bg-back">←</button>
+      <span class="p3b-title">选择背景</span>
+    </div>
+
+    <!-- 画布预览区（背景 + 水印叠加） -->
+    <div class="p3b-preview">
+      <div class="p3b-canvas" id="p3b-canvas">
+        <img class="p3b-bg-img" id="p3b-bg-img" src="images/templates/t1/bg.png" alt="背景">
+        <div class="p3b-watermarks" id="p3b-watermarks"></div>
+      </div>
+    </div>
+
+    <!-- 底部背景编辑面板 -->
+    <div class="p3b-panel">
+      <div class="p3b-panel-header">
+        <button class="p3b-panel-close" id="btn-bg-cancel">✕</button>
+        <span class="p3b-panel-title">背景编辑</span>
+        <button class="p3b-panel-confirm" id="btn-bg-confirm">✓</button>
+      </div>
+      <div class="p3b-preset-scroll">
+        <div class="p3b-preset-item selected" data-bg="images/templates/t1/bg.png">
+          <img src="images/templates/t1/bg.png" alt="预制背景1">
+        </div>
+        <div class="p3b-preset-item" data-bg="images/bg-preset-2.png">
+          <img src="images/bg-preset-2.png" alt="预制背景2">
+        </div>
+        <div class="p3b-preset-item" data-bg="images/bg-preset-3.png">
+          <img src="images/bg-preset-3.png" alt="预制背景3">
+        </div>
+      </div>
+      <div class="p3b-bottom-btns">
+        <button class="p3b-album-btn" id="btn-bg-album">
+          <span class="p3b-album-icon">📷</span>
+          <span>从相册中选择</span>
+        </button>
+        <button class="p3b-transparent-btn" id="btn-bg-transparent">
+          <span class="p3b-transparent-icon">⊞</span>
+          <span>透明背景</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- 相册选择弹窗 -->
+    <div class="p3b-album-modal" id="p3b-album-modal">
+      <div class="p3b-album-topbar">
+        <button class="p3b-album-back" id="p3b-album-back">←</button>
+        <span class="p3b-album-title">选择照片</span>
+      </div>
+      <div class="p3b-album-grid" id="p3b-album-grid"></div>
+    </div>
+  </div>
+
+  <!-- PAGE 3C: 预览海报 -->
+  <div id="page3c" class="page p3c-page">
+    <!-- 顶部栏 -->
+    <div class="p3c-topbar">
+      <button class="p3c-back" id="btn-poster-back">←</button>
+      <span class="p3c-title">预览海报</span>
+      <button class="p3c-share" id="btn-poster-share"><img src="images/buttons/share.png" alt="分享"></button>
+    </div>
+
+    <!-- 画布预览区（背景 + 水印） -->
+    <div class="p3c-preview">
+      <div class="p3c-canvas" id="p3c-canvas">
+        <img class="p3c-bg-img" id="p3c-bg-img" src="images/templates/t1/bg.png" alt="背景">
+        <div class="wm-canvas" id="wm-canvas"></div>
+      </div>
+    </div>
+
+    <!-- 画布下方工具按钮 -->
+    <div class="p3c-canvas-tools">
+      <button class="wm-undo-btn" id="btn-poster-undo"><img src="images/buttons/undo.png" alt="撤回"></button>
+      <button class="wm-color-btn" id="btn-poster-color"><img src="images/buttons/color.png" alt="颜色"></button>
+      <button class="wm-fullscreen-btn" id="btn-poster-fullscreen"><img src="images/buttons/preview.png" alt="预览"></button>
+    </div>
+
+    <!-- 底部工具栏 -->
+    <div class="p3c-toolbar">
+      <button class="p3c-tool-btn" id="btn-poster-bg"><img src="images/buttons/bg-select.png" alt="背景"></button>
+      <button class="p3c-tool-btn p3c-tool-add" id="btn-poster-add-watermark"><img src="images/buttons/add.png" alt="添加"></button>
+      <button class="p3c-tool-btn" id="btn-poster-crop"><img src="images/buttons/crop.png" alt="裁剪"></button>
+    </div>
+
+    <!-- 背景裁剪弹窗 -->
+    <div class="wm-crop-modal" id="wm-crop-modal">
+      <div class="wm-crop-topbar">
+        <button class="wm-crop-back" id="wm-crop-back">←</button>
+        <span class="wm-crop-title">背景裁剪</span>
+      </div>
+      <div class="wm-crop-preview">
+        <div class="wm-crop-canvas" id="wm-crop-canvas">
+          <img class="wm-crop-bg" id="wm-crop-bg" src="" alt="裁剪背景">
+          <div class="wm-crop-watermarks" id="wm-crop-watermarks"></div>
+        </div>
+      </div>
+      <div class="wm-crop-bar">
+        <button class="wm-crop-cancel" id="wm-crop-cancel">✕</button>
+        <span class="wm-crop-bar-title">背景裁剪</span>
+        <button class="wm-crop-confirm" id="wm-crop-confirm">✓</button>
+      </div>
+      <div class="wm-crop-options">
+        <button class="wm-crop-opt" id="wm-crop-restore" disabled>
+          <span class="wm-crop-opt-icon">↺</span>
+          <span class="wm-crop-opt-label">还原</span>
+        </button>
+        <button class="wm-crop-opt active" data-ratio="original">
+          <span class="wm-crop-opt-icon">⬒</span>
+          <span class="wm-crop-opt-label">原比例</span>
+        </button>
+        <button class="wm-crop-opt" data-ratio="1:1">
+          <span class="wm-crop-opt-icon">□</span>
+          <span class="wm-crop-opt-label">1:1</span>
+        </button>
+        <button class="wm-crop-opt" data-ratio="9:16">
+          <span class="wm-crop-opt-icon">▯</span>
+          <span class="wm-crop-opt-label">9:16</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- 全屏预览遮罩（点击退出全屏） -->
+    <div class="wm-fullscreen-overlay" id="wm-fullscreen-overlay"></div>
+
+    <!-- 颜色编辑栏 -->
+    <div class="wm-color-bar" id="wm-color-bar">
+      <button class="wm-color-bar-close" id="wm-color-cancel">✕</button>
+      <div class="wm-color-bar-center">
+        <span class="wm-color-bar-title">颜色编辑</span>
+      </div>
+      <button class="wm-color-bar-confirm" id="wm-color-confirm">✓</button>
+    </div>
+    <div class="wm-color-presets" id="wm-color-presets">
+      <button class="wm-color-picker-btn" id="wm-color-picker-btn">✏</button>
+      <div class="wm-color-dot" data-color="#ffffff" style="background:#ffffff;"></div>
+      <div class="wm-color-dot" data-color="#000000" style="background:#000000;border:1px solid #555;"></div>
+      <div class="wm-color-dot" data-color="#ff2d55" style="background:#ff2d55;"></div>
+      <div class="wm-color-dot" data-color="#ff6b00" style="background:#ff6b00;"></div>
+      <div class="wm-color-dot" data-color="#ffcc00" style="background:#ffcc00;"></div>
+      <div class="wm-color-dot" data-color="#34c759" style="background:#34c759;"></div>
+      <div class="wm-color-dot" data-color="#00c7be" style="background:#00c7be;"></div>
+      <div class="wm-color-dot" data-color="#30b0c7" style="background:#30b0c7;"></div>
+      <div class="wm-color-dot" data-color="#5856d6" style="background:#5856d6;"></div>
+      <div class="wm-color-dot" data-color="#af52de" style="background:#af52de;"></div>
+      <div class="wm-color-dot" data-color="#ff375f" style="background:#ff375f;"></div>
+      <div class="wm-color-dot" data-color="#ff9500" style="background:#ff9500;"></div>
+      <div class="wm-color-dot" data-color="#ffd60a" style="background:#ffd60a;"></div>
+      <div class="wm-color-dot" data-color="#64d2ff" style="background:#64d2ff;"></div>
+      <div class="wm-color-dot" data-color="#5e5ce6" style="background:#5e5ce6;"></div>
+      <div class="wm-color-dot" data-color="#bf5af2" style="background:#bf5af2;"></div>
+    </div>
+
+    <!-- 取色器（可拖拽圆形） -->
+    <div class="wm-eyedropper" id="wm-eyedropper">
+      <div class="wm-eyedropper-ring"></div>
+      <div class="wm-eyedropper-crosshair">+</div>
+    </div>
+
+    <!-- 水印添加弹窗 -->
+    <div class="wm-panel-overlay" id="wm-panel-overlay"></div>
+    <div class="wm-panel" id="wm-panel">
+      <div class="wm-panel-handle"></div>
+      <div class="wm-panel-header">
+        <span class="wm-panel-title">海报预览</span>
+        <div class="wm-panel-tabs">
+          <div class="wm-tab active" data-wm-tab="all">全部</div>
+          <div class="wm-tab" data-wm-tab="data">数据</div>
+          <div class="wm-tab" data-wm-tab="chart">图表</div>
+          <div class="wm-tab" data-wm-tab="other">其他</div>
+        </div>
+      </div>
+      <div class="wm-panel-grid" id="wm-panel-grid"></div>
+    </div>
+
+    <!-- 编辑弹窗（数据/图表/Slogan选择） -->
+    <div class="wm-edit-modal" id="wm-edit-modal">
+      <div class="wm-edit-modal-content">
+        <div class="wm-edit-modal-header">
+          <button class="wm-edit-cancel" id="wm-edit-cancel">✕</button>
+          <span class="wm-edit-modal-title" id="wm-edit-modal-title">编辑水印</span>
+          <button class="wm-edit-confirm" id="wm-edit-confirm">✓</button>
+        </div>
+        <div class="wm-edit-modal-grid" id="wm-edit-modal-grid"></div>
+      </div>
+    </div>
+
+    <!-- 退出确认弹窗 -->
+    <div class="wm-exit-dialog" id="wm-exit-dialog">
+      <div class="wm-exit-dialog-card">
+        <div class="wm-exit-dialog-title">确认退出海报编辑？</div>
+        <div class="wm-exit-dialog-btns">
+          <button class="wm-exit-btn-confirm" id="wm-exit-confirm">确认退出</button>
+          <button class="wm-exit-btn-cancel" id="wm-exit-cancel">继续编辑</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Toast 提示 -->
+    <div class="wm-toast" id="wm-toast">模板数量已达上限！</div>
+  </div>
+
+  <!-- PAGE 3D: 分享弹窗（代码渲染） -->
+  <div id="page3d" class="page p3d-share-page">
+    <div class="p3d-share-bg"></div>
+    <div class="p3d-share-panel">
+      <div class="p3d-share-header">
+        <button class="p3d-share-close" id="btn-poster-share-close">✕</button>
+        <span class="p3d-share-title">分享至</span>
+      </div>
+      <div class="p3d-share-options">
+        <div class="p3d-share-item">
+          <div class="p3d-share-icon" style="background:#007aff;">⬇</div>
+          <span>下载</span>
+        </div>
+        <div class="p3d-share-item">
+          <div class="p3d-share-icon" style="background:#07c160;">💬</div>
+          <span>微信</span>
+        </div>
+        <div class="p3d-share-item">
+          <div class="p3d-share-icon" style="background:#07c160;">📷</div>
+          <span>朋友圈</span>
+        </div>
+        <div class="p3d-share-item">
+          <div class="p3d-share-icon" style="background:#007aff;">•••</div>
+          <span>更多</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PAGE 4: 轨迹视频编辑 -->
+  <div id="page4" class="page p4-page">
+    <!-- 顶部操作栏 -->
+    <div class="p4-topbar">
+      <button class="p4-back" id="btn-video-back">←</button>
+      <span class="p4-title">轨迹视频</span>
+      <button class="p4-share-btn" id="btn-video-share">分享</button>
+    </div>
+
+    <!-- 视频预览区 -->
+    <div class="p4-preview-area">
+      <video id="p4-video" class="p4-video-el" src="videos/classic-classic.mp4" playsinline muted loop></video>
+      <div class="p4-play-btn" id="p4-play-btn">▶</div>
+      <div class="p4-progress-bar">
+        <span class="p4-time" id="p4-time-current">00:00</span>
+        <div class="p4-progress-track" id="p4-progress-track">
+          <div class="p4-progress-fill" id="p4-progress-fill"></div>
+        </div>
+        <span class="p4-time" id="p4-time-total">00:00</span>
+      </div>
+    </div>
+
+    <!-- 编辑区 -->
+    <div class="p4-edit-area">
+      <div class="p4-tabs">
+        <div class="p4-tab active" data-tab="photo">图片添加</div>
+        <div class="p4-tab" data-tab="mapstyle">地图展示</div>
+        <div class="p4-tab" data-tab="music">音乐选择</div>
+      </div>
+      <div class="p4-tags-wrapper" id="p4-tags-wrapper">
+        <!-- 图片添加 Tab -->
+        <div class="p4-tag-group" id="tab-photo">
+          <div class="p4-photo-hint">添加图片</div>
+          <div class="p4-photo-thumbs" id="p4-photo-thumbs">
+            <div class="p4-photo-add" id="btn-add-photo">＋</div>
+          </div>
+        </div>
+        <!-- 地图展示 Tab -->
+        <div class="p4-tag-group" id="tab-mapstyle" style="display:none;">
+          <div class="p4-map-section">
+            <div class="p4-map-section-title">地图样式</div>
+            <div class="p4-map-options">
+              <div class="p4-map-opt" data-map="hide">隐藏</div>
+              <div class="p4-map-opt selected" data-map="classic">经典</div>
+              <div class="p4-map-opt" data-map="satellite">卫星</div>
+            </div>
+          </div>
+          <div class="p4-map-section" style="margin-top:12px;">
+            <div class="p4-map-section-title">轨迹样式</div>
+            <div class="p4-map-options">
+              <div class="p4-map-opt selected" data-track="classic">经典</div>
+              <div class="p4-map-opt" data-track="fire">火力全开</div>
+            </div>
+          </div>
+        </div>
+        <!-- 音乐选择 Tab -->
+        <div class="p4-tag-group" id="tab-music" style="display:none;">
+          <div class="p4-music-opt selected" data-music="none">🚫 无音乐</div>
+          <div class="p4-music-opt" data-music="jump">🎵 跃动</div>
+          <div class="p4-music-opt" data-music="melody">🎵 悠扬</div>
+          <div class="p4-music-opt" data-music="electronic">🎵 电子</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PAGE 4A: 退出确认弹窗 -->
+  <div id="page4a" class="page">
+    <img src="images/page4-confirm-dialog.png" alt="确认退出弹窗">
+    <button class="hotspot" id="btn-video-confirm-cancel" style="
+      bottom: 4%;
+      left: 5%;
+      width: 43%;
+      height: 6%;
+      border-radius: 24px;
+    "></button>
+    <button class="hotspot" id="btn-video-confirm-exit" style="
+      bottom: 4%;
+      right: 5%;
+      width: 43%;
+      height: 6%;
+      border-radius: 24px;
+    "></button>
+  </div>
+
+  <!-- PAGE 4B: 录制中 -->
+  <div id="page4b" class="page">
+    <img src="images/page4-recording.png" alt="录制中">
+    <div class="p4-recording-indicator">
+      <span class="p4-rec-dot"></span>
+      <span class="p4-rec-text">录制中...</span>
+    </div>
+  </div>
+
+  <!-- PAGE 4C: 分享弹窗 -->
+  <div id="page4c" class="page">
+    <img src="images/page4-share-panel.png" alt="分享面板">
+    <button class="hotspot" id="btn-video-share-close" style="
+      bottom: 16%;
+      left: 4%;
+      width: 50px;
+      height: 50px;
+      border-radius: 25px;
+    "></button>
+  </div>
+
+  <!-- PAGE 4D: 添加图片 -->
+  <div id="page4d" class="page p4d-page">
+    <div class="p4d-topbar">
+      <button class="p4d-back" id="btn-photo-back">←</button>
+      <span class="p4d-title">添加图片</span>
+      <button class="p4d-add-btn" id="btn-photo-confirm">添加</button>
+    </div>
+    <div class="p4d-hint">
+      <span class="p4d-hint-icon">⚠</span>
+      <span class="p4d-hint-text" id="p4d-hint-text">还有 15 张照片可选</span>
+    </div>
+    <div class="p4d-grid" id="p4d-grid"></div>
+    <!-- 加载遮罩 -->
+    <div class="p4d-loading" id="p4d-loading">
+      <div class="p4d-spinner"></div>
+      <div class="p4d-loading-text">正在轨迹视频中添加图片，请稍后</div>
+    </div>
+  </div>
+
+  <!-- PAGE 5: 运动报告编辑（模块化） -->
+  <div id="page5" class="page">
+    <!-- 顶部操作栏 -->
+    <div class="p5-topbar">
+      <button class="p5-back" id="btn-report-edit-back">←</button>
+      <span class="p5-title">运动报告</span>
+      <button class="p5-share-btn" id="btn-report-edit-share">分享</button>
+    </div>
+
+    <!-- 预览区 -->
+    <div class="p5-preview-area" id="p5-preview-area">
+      <div class="p5-report-card" id="p5-report-card">
+        <!-- 地图+距离：根据地图样式×轨迹样式组合切换 -->
+        <div class="p5-module" data-module="header">
+          <img src="images/map-classic-classic.png" class="p5-module-img" alt="地图+距离">
+        </div>
+        <!-- 数据展示 Tab 控制：副数据（模块化） -->
+        <div class="p5-subdata" id="p5-subdata">
+          <div class="p5-subdata-item" data-key="duration"><div class="sd-val">00:39:23</div><div class="sd-lbl">总时长</div></div>
+          <div class="p5-subdata-item" data-key="cal"><div class="sd-val">433<small>kcal</small></div><div class="sd-lbl">活动卡路里</div></div>
+          <div class="p5-subdata-item" data-key="totalcal"><div class="sd-val">478<small>kcal</small></div><div class="sd-lbl">总卡路里</div></div>
+          <div class="p5-subdata-item" data-key="avgpace"><div class="sd-val">7'53"</div><div class="sd-lbl">平均配速</div></div>
+          <div class="p5-subdata-item" data-key="ngp"><div class="sd-val">8'08"</div><div class="sd-lbl">平均NGP</div></div>
+          <div class="p5-subdata-item" data-key="avghr"><div class="sd-val">161<small>bpm</small></div><div class="sd-lbl">平均心率</div></div>
+          <div class="p5-subdata-item" data-key="steps"><div class="sd-val">5856</div><div class="sd-lbl">步数</div></div>
+          <div class="p5-subdata-item" data-key="ascent"><div class="sd-val">22.3<small>m</small></div><div class="sd-lbl">累计上升</div></div>
+          <div class="p5-subdata-item" data-key="descent"><div class="sd-val">21.1<small>m</small></div><div class="sd-lbl">累计下降</div></div>
+          <div class="p5-subdata-item" data-key="avgalt"><div class="sd-val">176<small>m</small></div><div class="sd-lbl">平均海拔</div></div>
+          <div class="p5-subdata-item" data-key="avgpower"><div class="sd-val">95<small>m</small></div><div class="sd-lbl">平均功率</div></div>
+        </div>
+        <!-- 图表展示 Tab 控制 -->
+        <div class="p5-module" data-module="heartrate">
+          <img src="images/module-heartrate.png" class="p5-module-img" alt="心率">
+        </div>
+        <div class="p5-module" data-module="pace">
+          <img src="images/module-pace.png" class="p5-module-img" alt="配速">
+        </div>
+        <div class="p5-module" data-module="pace-km">
+          <img src="images/module-pace-km.png" class="p5-module-img" alt="每公里配速">
+        </div>
+        <div class="p5-module" data-module="cadence">
+          <img src="images/module-cadence.png" class="p5-module-img" alt="步频">
+        </div>
+        <div class="p5-module" data-module="stride">
+          <img src="images/module-stride.png" class="p5-module-img" alt="步幅">
+        </div>
+        <div class="p5-module" data-module="altitude">
+          <img src="images/module-altitude.png" class="p5-module-img" alt="海拔">
+        </div>
+        <div class="p5-module" data-module="power">
+          <img src="images/module-power.png" class="p5-module-img" alt="功率">
+        </div>
+        <div class="p5-module" data-module="performance">
+          <img src="images/module-performance.png" class="p5-module-img" alt="运动表现">
+        </div>
+        <div class="p5-module" data-module="feeling">
+          <img src="images/module-feeling.png" class="p5-module-img" alt="训练感受">
+        </div>
+        <div class="p5-module" data-module="device">
+          <img src="images/module-device.png" class="p5-module-img" alt="数据来源">
+        </div>
+      </div>
+      <div class="p5-scroll-hint" id="p5-scroll-hint">
+        <span class="hint-arrow">∧</span>
+        <span class="hint-text">上滑可浏览全图</span>
+      </div>
+    </div>
+
+    <!-- 编辑区 -->
+    <div class="p5-edit-area">
+      <div class="p5-tabs">
+        <div class="p5-tab active" data-tab="data">数据展示</div>
+        <div class="p5-tab" data-tab="chart">图表展示</div>
+        <div class="p5-tab" data-tab="map">地图展示</div>
+      </div>
+      <div class="p5-tags-wrapper" id="p5-tags-wrapper">
+        <!-- 数据展示 Tab：默认全选 -->
+        <div class="p5-tag-group" id="tab-data">
+          <div class="p5-tag selected" data-role="show-all">✓ 展示全部</div>
+          <div class="p5-tag selected" data-key="duration">🕐 总时长</div>
+          <div class="p5-tag selected" data-key="cal">🔥 活动卡路里</div>
+          <div class="p5-tag selected" data-key="totalcal">🔥 总卡路里</div>
+          <div class="p5-tag selected" data-key="avgpace">👟 平均配速</div>
+          <div class="p5-tag selected" data-key="ngp">👟 平均NGP</div>
+          <div class="p5-tag selected" data-key="avghr">❤ 平均心率</div>
+          <div class="p5-tag selected" data-key="steps">🦶 步数</div>
+          <div class="p5-tag selected" data-key="ascent">⛰ 累计上升</div>
+          <div class="p5-tag selected" data-key="descent">⛰ 累计下降</div>
+          <div class="p5-tag selected" data-key="avgalt">📍 平均海拔</div>
+          <div class="p5-tag selected" data-key="avgpower">⚡ 平均功率</div>
+        </div>
+        <!-- 图表展示 Tab：默认不选 -->
+        <div class="p5-tag-group" id="tab-chart" style="display:none;">
+          <div class="p5-tag" data-role="show-all">✓ 展示全部</div>
+          <div class="p5-tag" data-target="heartrate">❤ 心率</div>
+          <div class="p5-tag" data-target="pace">⚡ 配速</div>
+          <div class="p5-tag" data-target="pace-km">📊 每公里配速</div>
+          <div class="p5-tag" data-target="cadence">👟 步频</div>
+          <div class="p5-tag" data-target="stride">📏 步幅</div>
+          <div class="p5-tag" data-target="altitude">⛰ 海拔</div>
+          <div class="p5-tag" data-target="power">⚡ 功率</div>
+          <div class="p5-tag" data-target="performance">🏃 运动表现</div>
+          <div class="p5-tag" data-target="feeling">💭 训练感受</div>
+          <div class="p5-tag" data-target="device">📱 数据来源</div>
+        </div>
+        <!-- 地图展示 Tab -->
+        <div class="p5-tag-group" id="tab-map" style="display:none;">
+          <div class="p5-map-section">
+            <div class="p5-map-section-title">地图样式</div>
+            <div class="p5-map-options">
+              <div class="p5-map-opt" data-map="hide">隐藏</div>
+              <div class="p5-map-opt selected" data-map="classic">经典</div>
+              <div class="p5-map-opt" data-map="satellite">卫星</div>
+            </div>
+          </div>
+          <div class="p5-map-section" style="margin-top:12px;">
+            <div class="p5-map-section-title">轨迹样式</div>
+            <div class="p5-map-options">
+              <div class="p5-map-opt selected" data-track="classic">经典</div>
+              <div class="p5-map-opt" data-track="fire">火力全开</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PAGE 5A: 返回二次确认弹窗 -->
+  <div id="page5a" class="page">
+    <img src="images/page5-confirm-dialog.png" alt="确认退出弹窗">
+    <!-- 确认退出按钮热区 -->
+    <button class="hotspot" id="btn-confirm-exit" style="
+      bottom: 4%;
+      left: 5%;
+      width: 43%;
+      height: 6%;
+      border-radius: 24px;
+    "></button>
+    <!-- 继续编辑按钮热区 -->
+    <button class="hotspot" id="btn-continue-edit" style="
+      bottom: 4%;
+      right: 5%;
+      width: 43%;
+      height: 6%;
+      border-radius: 24px;
+    "></button>
+  </div>
+
+  <!-- PAGE 5B: 分享弹窗 -->
+  <div id="page5b" class="page">
+    <img src="images/page5-share-panel.png" alt="分享面板">
+    <!-- X 关闭按钮热区 -->
+    <button class="hotspot" id="btn-share-panel-close" style="
+      bottom: 16%;
+      left: 4%;
+      width: 50px;
+      height: 50px;
+      border-radius: 25px;
+    "></button>
+  </div>
+
+</div>
+
+<script>
+// Page navigation helper
+function showPage(pageId, animate) {
+  const target = document.getElementById(pageId);
+  target.classList.add('active');
+  if (animate) target.classList.add('slide-in');
+}
+
+function hidePage(pageId) {
+  const page = document.getElementById(pageId);
+  page.classList.remove('active');
+  page.classList.remove('slide-in');
+}
+
+function switchPage(from, to, animate) {
+  hidePage(from);
+  showPage(to, animate);
+}
+
+// Page 1: Click "分享" → show page 2 (bottom sheet)
+document.getElementById('btn-share').addEventListener('click', () => {
+  document.getElementById('btn-share').classList.remove('hint-pulse');
+  showPage('page2', true);
+});
+
+// Page 2: Click "X" → back to page 1
+document.getElementById('btn-close').addEventListener('click', () => {
+  hidePage('page2');
+});
+
+// Page 2: Click "水印海报" → page 3
+document.getElementById('btn-watermark').addEventListener('click', () => {
+  switchPage('page2', 'page3', true);
+});
+
+// Page 2: Click "轨迹视频" → page 4
+document.getElementById('btn-video').addEventListener('click', () => {
+  switchPage('page2', 'page4', true);
+});
+
+// Page 2: Click "运动报告" → page 5
+document.getElementById('btn-report-edit').addEventListener('click', () => {
+  switchPage('page2', 'page5', true);
+  resetScrollHint();
+});
+
+// Page 3: Back → page 2
+document.getElementById('btn-template-back').addEventListener('click', () => {
+  switchPage('page3', 'page2', false);
+});
+
+// ==================== Template & Background System ====================
+
+// Template definitions
+const templateConfigs = {
+  '1': {
+    bg: 'images/templates/t1/bg.png',
+    effect: 'none',
+    watermarks: [
+      { src: 'images/templates/t1/wm-data.png', x: -16.3, y: 2.4, w: 92.8, h: 44.3 },
+      { src: 'images/templates/t1/wm-weather.png', x: 70.5, y: 2.1, w: 28.7, h: 12.9 },
+      { src: 'images/templates/t1/wm-training.png', x: 38.6, y: 44.3, w: 60, h: 35 },
+      { src: 'images/templates/t1/wm-logo.png', x: 25, y: 90, w: 50, h: 6 }
+    ]
+  },
+  '2': {
+    bg: 'images/templates/t2/bg.png',
+    effect: '3d',
+    watermarks: [
+      { src: 'images/templates/t2/wm-calendar.png', x: 5, y: 3, w: 55, h: 35 },
+      { src: 'images/templates/t2/wm-curve.png', x: 5.6, y: 52.4, w: 35, h: 15 },
+      { src: 'images/templates/t2/wm-data.png', x: 52.6, y: 30.2, w: 51.8, h: 18.9 },
+      { src: 'images/templates/t2/wm-logo.png', x: 25, y: 92, w: 50, h: 5 }
+    ]
+  },
+  '3': {
+    bg: 'images/templates/t3/bg.png',
+    effect: 'blur',
+    watermarks: [
+      { src: 'images/templates/t3/wm-logo.png', x: 2, y: 2, w: 30, h: 5 },
+      { src: 'images/templates/t3/wm-chart.png', x: 20.7, y: 11.7, w: 66.5, h: 40.1 },
+      { src: 'images/templates/t3/wm-data.png', x: 2.4, y: 60.2, w: 50, h: 22 },
+      { src: 'images/templates/t3/wm-location.png', x: 5.6, y: 83.8, w: 45, h: 12 }
+    ]
+  },
+  '4': {
+    bg: 'images/templates/t4/bg.png',
+    effect: 'mosaic',
+    watermarks: [
+      { src: 'images/templates/t4/wm-info.png', x: 3, y: 3, w: 30, h: 10 },
+      { src: 'images/templates/t4/wm-track.png', x: 25, y: 18, w: 40, h: 30 },
+      { src: 'images/templates/t4/wm-logo.png', x: 66.9, y: 42.5, w: 30, h: 5 },
+      { src: 'images/templates/t4/wm-data.png', x: 3, y: 55, w: 94, h: 40 }
+    ]
+  },
+  '5': {
+    bg: 'images/templates/t5/bg.png',
+    effect: 'ccd',
+    watermarks: [
+      { src: 'images/templates/t5/wm-logo.png', x: 2, y: 2, w: 30, h: 5 },
+      { src: 'images/templates/t5/wm-avatar.png', x: 68.6, y: 5, w: 30.5, h: 18 },
+      { src: 'images/templates/t5/wm-chart.png', x: 0.8, y: 33.5, w: 50.2, h: 40.1 },
+      { src: 'images/templates/t5/wm-data.png', x: 40, y: 55, w: 55, h: 35 }
+    ]
+  },
+  '6': {
+    bg: 'images/templates/t6/bg.png',
+    effect: 'none',
+    watermarks: [
+      { src: 'images/templates/t6/wm-data.png', x: 2.4, y: 16.8, w: 45, h: 35 },
+      { src: 'images/templates/t6/wm-temp.png', x: 65, y: 3, w: 30, h: 12 },
+      { src: 'images/templates/t6/wm-chart.png', x: 39.8, y: 45.5, w: 56.2, h: 33.5 },
+      { src: 'images/templates/t6/wm-logo.png', x: 25, y: 92, w: 50, h: 5 }
+    ]
+  }
+};
+
+// State
+let selectedTemplate = null;
+let bgEntryFrom = 'page3';
+let selectedBg = 'images/templates/t1/bg.png';
+const p3bCanvas = document.getElementById('p3b-canvas');
+const p3bBgImg = document.getElementById('p3b-bg-img');
+const p3bWatermarks = document.getElementById('p3b-watermarks');
+
+// Album photos (运动场景模拟)
+const albumPhotos = [
+  'images/templates/t1/bg.png',
+  'images/bg-preset-1.png',
+  'images/bg-preset-2.png',
+  'images/bg-preset-3.png'
+];
+
+// Render watermarks on page3b canvas (non-editable)
+function renderP3bWatermarks(tplKey) {
+  p3bWatermarks.innerHTML = '';
+  const config = templateConfigs[tplKey];
+  if (!config) return;
+  config.watermarks.forEach(wm => {
+    const div = document.createElement('div');
+    div.className = 'p3b-wm-item';
+    div.style.left = wm.x + '%';
+    div.style.top = wm.y + '%';
+    div.style.width = wm.w + '%';
+    div.style.height = wm.h + '%';
+    const img = document.createElement('img');
+    img.src = wm.src;
+    div.appendChild(img);
+    p3bWatermarks.appendChild(div);
+  });
+}
+
+// Update p3b background
+function setP3bBg(src) {
+  if (src === 'transparent') {
+    p3bBgImg.style.display = 'none';
+    p3bCanvas.classList.add('transparent-bg');
+  } else {
+    p3bBgImg.src = src;
+    p3bBgImg.style.display = '';
+    p3bCanvas.classList.remove('transparent-bg');
+  }
+}
+
+// ==================== 3D 蒙版映射（背景图 → 对应主体蒙版 + 位置大小） ====================
+const maskMap = {
+  'images/templates/t2/bg.png': { src: 'images/templates/t2/mask-ball.png', x: 0, y: 0, w: 100, h: 100 },
+  'images/bg-preset-1.png': { src: 'images/mask-preset-1.png', x: -108, y: 16, w: 100, h: 100, rotate: -260 },
+  'images/bg-preset-2.png': { src: 'images/mask-preset-2.png', x: 14, y: 36, w: 40, h: 40 },
+  'images/bg-preset-3.png': { src: 'images/mask-preset-3.png', x: -10, y: 26, w: 45, h: 45 }
+};
+
+function getMaskForBg(bgSrc) {
+  if (!bgSrc) return null;
+  for (const key of Object.keys(maskMap)) {
+    if (bgSrc.endsWith(key) || bgSrc === key) return maskMap[key];
+  }
+  return null;
+}
+
+// Apply effect to a canvas element
+function applyEffect(canvasEl, effect, tplKey) {
+  canvasEl.querySelectorAll('.effect-mask').forEach(m => m.remove());
+  canvasEl.classList.remove('effect-3d', 'effect-blur', 'effect-mosaic', 'effect-ccd');
+
+  if (effect === '3d') {
+    const bgImg = canvasEl.querySelector('img[id$="-bg-img"]');
+    const bgSrc = bgImg ? bgImg.getAttribute('src') : null;
+    const maskConfig = getMaskForBg(bgSrc);
+    if (maskConfig) {
+      const maskEl = document.createElement('img');
+      maskEl.className = 'effect-mask';
+      maskEl.src = maskConfig.src;
+      maskEl.style.left = maskConfig.x + '%';
+      maskEl.style.top = maskConfig.y + '%';
+      maskEl.style.width = maskConfig.w + '%';
+      maskEl.style.height = maskConfig.h + '%';
+      if (maskConfig.rotate) maskEl.style.transform = 'rotate(' + maskConfig.rotate + 'deg)';
+      canvasEl.appendChild(maskEl);
+    }
+  } else if (effect && effect !== 'none') {
+    canvasEl.classList.add('effect-' + effect);
+  }
+}
+
+// Page 3: Template selection → page 3b (background select)
+document.querySelectorAll('.p3-template-item').forEach(item => {
+  item.addEventListener('click', () => {
+    selectedTemplate = item.dataset.tpl || '1';
+    bgEntryFrom = 'page3';
+    const config = templateConfigs[selectedTemplate];
+    if (config) {
+      selectedBg = config.bg;
+      setP3bBg(config.bg);
+      renderP3bWatermarks(selectedTemplate);
+      applyEffect(p3bCanvas, config.effect, selectedTemplate);
+      // highlight matching preset
+      document.querySelectorAll('.p3b-preset-item').forEach(p => {
+        p.classList.toggle('selected', p.dataset.bg === config.bg);
+      });
+    }
+    switchPage('page3', 'page3b', true);
+  });
+});
+
+// Page 3: Custom watermark → page 3b (transparent background)
+document.getElementById('btn-custom-watermark').addEventListener('click', () => {
+  selectedTemplate = null;
+  bgEntryFrom = 'page3';
+  selectedBg = 'transparent';
+  setP3bBg('transparent');
+  p3bWatermarks.innerHTML = '';
+  // 清除p3b画布上残留的3D蒙版
+  const p3bCanvasEl = document.getElementById('p3b-canvas');
+  p3bCanvasEl.querySelectorAll('.effect-mask').forEach(m => m.remove());
+  p3bCanvasEl.classList.remove('effect-3d', 'effect-blur', 'effect-mosaic', 'effect-ccd');
+  document.querySelectorAll('.p3b-preset-item').forEach(p => p.classList.remove('selected'));
+  switchPage('page3', 'page3b', true);
+});
+
+// Page 3B: Preset background selection
+document.querySelectorAll('.p3b-preset-item').forEach(item => {
+  item.addEventListener('click', () => {
+    document.querySelectorAll('.p3b-preset-item').forEach(p => p.classList.remove('selected'));
+    item.classList.add('selected');
+    selectedBg = item.dataset.bg;
+    setP3bBg(selectedBg);
+    // 3D特效：切换背景后重新分割主体
+    if (selectedTemplate && templateConfigs[selectedTemplate] && templateConfigs[selectedTemplate].effect === '3d') {
+      applyEffect(p3bCanvas, '3d', selectedTemplate);
+    }
+  });
+});
+
+// Page 3B: Album → open album modal
+document.getElementById('btn-bg-album').addEventListener('click', () => {
+  const modal = document.getElementById('p3b-album-modal');
+  const grid = document.getElementById('p3b-album-grid');
+  grid.innerHTML = '';
+  albumPhotos.forEach(src => {
+    const div = document.createElement('div');
+    div.className = 'p3b-album-item';
+    const img = document.createElement('img');
+    img.src = src;
+    div.appendChild(img);
+    div.addEventListener('click', () => {
+      selectedBg = src;
+      setP3bBg(src);
+      document.querySelectorAll('.p3b-preset-item').forEach(p => p.classList.remove('selected'));
+      modal.classList.remove('show');
+      // 3D特效：切换背景后重新分割主体
+      if (selectedTemplate && templateConfigs[selectedTemplate] && templateConfigs[selectedTemplate].effect === '3d') {
+        applyEffect(p3bCanvas, '3d', selectedTemplate);
+      }
+    });
+    grid.appendChild(div);
+  });
+  modal.classList.add('show');
+});
+
+// Album modal: back
+document.getElementById('p3b-album-back').addEventListener('click', () => {
+  document.getElementById('p3b-album-modal').classList.remove('show');
+});
+
+// Page 3B: Transparent background
+document.getElementById('btn-bg-transparent').addEventListener('click', () => {
+  selectedBg = 'transparent';
+  setP3bBg('transparent');
+  document.querySelectorAll('.p3b-preset-item').forEach(p => p.classList.remove('selected'));
+  // 透明背景不需要3D蒙版
+  p3bCanvas.querySelectorAll('.effect-mask').forEach(m => m.remove());
+});
+
+// Page 3B: Back (←)
+document.getElementById('btn-bg-back').addEventListener('click', () => {
+  if (bgEntryFrom === 'page3c') {
+    switchPage('page3b', 'page3c', false);
+  } else {
+    switchPage('page3b', 'page3', false);
+  }
+});
+
+// Page 3B: Cancel (✕)
+document.getElementById('btn-bg-cancel').addEventListener('click', () => {
+  if (bgEntryFrom === 'page3c') {
+    switchPage('page3b', 'page3c', false);
+  } else {
+    switchPage('page3b', 'page3', false);
+  }
+});
+
+// Page 3B: Confirm (✓) → apply background and go to page 3c
+document.getElementById('btn-bg-confirm').addEventListener('click', () => {
+  const posterBg = document.getElementById('p3c-bg-img');
+  if (selectedBg === 'transparent') {
+    posterBg.style.display = 'none';
+    document.getElementById('p3c-canvas').classList.add('transparent-bg');
+  } else {
+    posterBg.src = selectedBg;
+    posterBg.style.display = '';
+    document.getElementById('p3c-canvas').classList.remove('transparent-bg');
+  }
+  // Also load template watermarks to page3c canvas if first time from template select
+  if (bgEntryFrom === 'page3' && selectedTemplate && templateConfigs[selectedTemplate]) {
+    loadTemplateToCanvas(selectedTemplate);
+  } else if (bgEntryFrom === 'page3' && !selectedTemplate) {
+    // 自定义流程：加载小米健康logo（不可删除/编辑）
+    const canvas = document.getElementById('wm-canvas');
+    canvas.innerHTML = '';
+    addWatermarkAtPosition({ src: 'images/templates/t1/wm-logo.png', label: '小米健康', cat: 'logo', editable: false, locked: true }, 25, 92, 50, 5);
+  }
+  // 应用模板特效到page3c，自定义流程清除残留特效
+  if (selectedTemplate && templateConfigs[selectedTemplate]) {
+    applyEffect(document.getElementById('p3c-canvas'), templateConfigs[selectedTemplate].effect, selectedTemplate);
+  } else {
+    applyEffect(document.getElementById('p3c-canvas'), 'none', null);
+  }
+  switchPage('page3b', 'page3c', true);
+});
+
+// Load template watermarks into page3c wm-canvas (with full interaction)
+function loadTemplateToCanvas(tplKey) {
+  const config = templateConfigs[tplKey];
+  if (!config) return;
+  const canvas = document.getElementById('wm-canvas');
+  canvas.innerHTML = '';
+  config.watermarks.forEach(wm => {
+    const isLogo = wm.src.includes('wm-logo');
+    const fakeItem = {
+      src: wm.src,
+      label: wm.src.split('/').pop().replace('.png',''),
+      cat: isLogo ? 'logo' : 'other',
+      editable: false,
+      locked: isLogo
+    };
+    addWatermarkAtPosition(fakeItem, wm.x, wm.y, wm.w, wm.h);
+  });
+}
+
+// Add a watermark at specific % position (for template loading)
+function addWatermarkAtPosition(item, xPct, yPct, wPct, hPct) {
+  const canvas = document.getElementById('wm-canvas');
+  const el = document.createElement('div');
+  el.className = 'wm-item';
+  el.style.left = xPct + '%';
+  el.style.top = yPct + '%';
+  el.style.width = wPct + '%';
+  el.style.height = hPct + '%';
+  el.dataset.cat = item.cat;
+  el.dataset.editable = item.editable;
+  el.dataset.label = item.label;
+  el.dataset.src = item.src;
+  el.dataset.locked = item.locked ? 'true' : '';
+  el._rotation = 0;
+  el._scale = 1;
+  wmZIndex++;
+  el.style.zIndex = wmZIndex;
+
+  const locked = item.locked || false;
+  el.innerHTML = `
+    <img class="wm-item-img" src="${item.src}" alt="${item.label}">
+    ${!locked ? '<div class="wm-item-btn wm-btn-delete" title="删除">✕</div>' : ''}
+    ${item.editable && !locked ? '<div class="wm-item-btn wm-btn-edit" title="编辑">✎</div>' : ''}
+    <div class="wm-item-btn wm-btn-move" title="移动">✥</div>
+    <div class="wm-item-btn wm-btn-resize" title="旋转/缩放">⤡</div>
+  `;
+
+  el.addEventListener('mousedown', (e) => {
+    if (e.target.classList.contains('wm-item-btn')) return;
+    selectWm(el);
+  });
+  el.addEventListener('touchstart', (e) => {
+    if (e.target.classList.contains('wm-item-btn')) return;
+    selectWm(el);
+  });
+
+  const delBtn = el.querySelector('.wm-btn-delete');
+  if (delBtn) {
+    delBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      el.remove();
+      if (wmSelectedItem === el) wmSelectedItem = null;
+    });
+    delBtn.addEventListener('touchend', (e) => {
+      e.stopPropagation();
+      e.preventDefault();
+      el.remove();
+      if (wmSelectedItem === el) wmSelectedItem = null;
+    });
+  }
+
+  const editBtn = el.querySelector('.wm-btn-edit');
+  if (editBtn) {
+    editBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      openEditModal(el);
+    });
+    editBtn.addEventListener('touchend', (e) => {
+      e.stopPropagation();
+      e.preventDefault();
+      openEditModal(el);
+    });
+  }
+
+  setupDrag(el);
+  setupResize(el);
+  setupPinch(el);
+
+  canvas.appendChild(el);
+}
+
+// Page 3C: Back with exit confirmation logic
+document.getElementById('btn-poster-back').addEventListener('click', () => {
+  if (wmHistory.length > 0) {
+    document.getElementById('wm-exit-dialog').classList.add('show');
+  } else {
+    resetPosterEditor();
+    switchPage('page3c', 'page3', false);
+  }
+});
+
+// Exit dialog: confirm exit
+document.getElementById('wm-exit-confirm').addEventListener('click', () => {
+  document.getElementById('wm-exit-dialog').classList.remove('show');
+  resetPosterEditor();
+  switchPage('page3c', 'page3', false);
+});
+
+// Exit dialog: cancel (stay)
+document.getElementById('wm-exit-cancel').addEventListener('click', () => {
+  document.getElementById('wm-exit-dialog').classList.remove('show');
+});
+
+// Reset poster editor state
+function resetPosterEditor() {
+  wmCanvas.innerHTML = '';
+  wmHistory.length = 0;
+  wmZIndex = 16;
+  wmSelectedItem = null;
+  wmUndoBtn.classList.remove('visible');
+  wmColorBtn.classList.remove('visible');
+  page3cEl.classList.remove('wm-fullscreen');
+}
+
+// Page 3C: Share → page 3d (overlay on top of page3c)
+document.getElementById('btn-poster-share').addEventListener('click', () => {
+  showPage('page3d', false);
+});
+
+// Page 3C: Background button → go to 3b from poster
+document.getElementById('btn-poster-bg').addEventListener('click', () => {
+  bgEntryFrom = 'page3c';
+  switchPage('page3c', 'page3b', true);
+});
+
+// ==================== 背景裁剪功能 ====================
+const cropModal = document.getElementById('wm-crop-modal');
+const cropCanvas = document.getElementById('wm-crop-canvas');
+const cropBg = document.getElementById('wm-crop-bg');
+const cropWatermarks = document.getElementById('wm-crop-watermarks');
+let cropEntryRatio = 'original'; // 进入裁剪时的比例
+let cropCurrentRatio = 'original'; // 当前选中的比例
+let cropBgOffsetX = 0, cropBgOffsetY = 0; // 背景拖拽偏移
+
+// 比例映射
+const cropRatioMap = {
+  'original': '3/4',
+  '1:1': '1/1',
+  '9:16': '9/16'
+};
+
+function openCropModal() {
+  // 记录进入时的比例
+  cropEntryRatio = cropCurrentRatio;
+
+  // 同步背景图
+  const bgSrc = document.getElementById('p3c-bg-img').src;
+  cropBg.src = bgSrc;
+  cropBg.style.transform = '';
+  cropBgOffsetX = 0;
+  cropBgOffsetY = 0;
+
+  // 设置画布比例
+  cropCanvas.style.aspectRatio = cropRatioMap[cropCurrentRatio];
+
+  // 同步水印到裁剪预览（只读展示）
+  cropWatermarks.innerHTML = '';
+  const wmItems = document.querySelectorAll('#wm-canvas .wm-item');
+  wmItems.forEach(item => {
+    const clone = document.createElement('div');
+    clone.className = 'wm-crop-wm-item';
+    clone.style.left = item.style.left;
+    clone.style.top = item.style.top;
+    clone.style.width = item.style.width;
+    clone.style.height = item.style.height;
+    const img = document.createElement('img');
+    const srcImg = item.querySelector('.wm-item-img');
+    if (srcImg) img.src = srcImg.src;
+    clone.appendChild(img);
+    cropWatermarks.appendChild(clone);
+  });
+
+  // 更新还原按钮状态
+  updateCropRestoreBtn();
+
+  // 高亮当前比例
+  document.querySelectorAll('.wm-crop-opt[data-ratio]').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.ratio === cropCurrentRatio);
+  });
+
+  cropModal.classList.add('show');
+}
+
+function closeCropModal(apply) {
+  if (apply) {
+    // 应用比例到 page3c 画布
+    document.getElementById('p3c-canvas').style.aspectRatio = cropRatioMap[cropCurrentRatio];
+    // 应用背景偏移
+    document.getElementById('p3c-bg-img').style.transform = `translate(${cropBgOffsetX}px, ${cropBgOffsetY}px)`;
+  } else {
+    // 不保留，恢复进入时比例
+    cropCurrentRatio = cropEntryRatio;
+  }
+  cropModal.classList.remove('show');
+}
+
+function updateCropRestoreBtn() {
+  const restoreBtn = document.getElementById('wm-crop-restore');
+  restoreBtn.disabled = (cropCurrentRatio === cropEntryRatio);
+}
+
+// 裁剪按钮点击
+document.getElementById('btn-poster-crop').addEventListener('click', openCropModal);
+
+// 返回按钮
+document.getElementById('wm-crop-back').addEventListener('click', () => closeCropModal(false));
+
+// 取消
+document.getElementById('wm-crop-cancel').addEventListener('click', () => closeCropModal(false));
+
+// 确认
+document.getElementById('wm-crop-confirm').addEventListener('click', () => closeCropModal(true));
+
+// 还原按钮
+document.getElementById('wm-crop-restore').addEventListener('click', () => {
+  cropCurrentRatio = cropEntryRatio;
+  cropCanvas.style.aspectRatio = cropRatioMap[cropCurrentRatio];
+  cropBgOffsetX = 0;
+  cropBgOffsetY = 0;
+  cropBg.style.transform = '';
+  document.querySelectorAll('.wm-crop-opt[data-ratio]').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.ratio === cropCurrentRatio);
+  });
+  updateCropRestoreBtn();
+});
+
+// 比例选项点击
+document.querySelectorAll('.wm-crop-opt[data-ratio]').forEach(btn => {
+  btn.addEventListener('click', () => {
+    cropCurrentRatio = btn.dataset.ratio;
+    cropCanvas.style.aspectRatio = cropRatioMap[cropCurrentRatio];
+    // 重置偏移
+    cropBgOffsetX = 0;
+    cropBgOffsetY = 0;
+    cropBg.style.transform = '';
+    document.querySelectorAll('.wm-crop-opt[data-ratio]').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    updateCropRestoreBtn();
+  });
+});
+
+// 背景拖拽（裁剪时移动背景位置）
+(function() {
+  let isDragging = false, startX, startY, origX, origY;
+
+  cropBg.addEventListener('mousedown', startDrag);
+  cropBg.addEventListener('touchstart', startDrag, { passive: false });
+
+  function startDrag(e) {
+    e.preventDefault();
+    isDragging = true;
+    cropBg.classList.add('dragging');
+    const pt = e.touches ? e.touches[0] : e;
+    startX = pt.clientX;
+    startY = pt.clientY;
+    origX = cropBgOffsetX;
+    origY = cropBgOffsetY;
+    document.addEventListener('mousemove', onDrag);
+    document.addEventListener('touchmove', onDrag, { passive: false });
+    document.addEventListener('mouseup', endDrag);
+    document.addEventListener('touchend', endDrag);
+  }
+
+  function onDrag(e) {
+    if (!isDragging) return;
+    e.preventDefault();
+    const pt = e.touches ? e.touches[0] : e;
+    cropBgOffsetX = origX + (pt.clientX - startX);
+    cropBgOffsetY = origY + (pt.clientY - startY);
+    cropBg.style.transform = `translate(${cropBgOffsetX}px, ${cropBgOffsetY}px)`;
+  }
+
+  function endDrag() {
+    isDragging = false;
+    cropBg.classList.remove('dragging');
+    document.removeEventListener('mousemove', onDrag);
+    document.removeEventListener('touchmove', onDrag);
+    document.removeEventListener('mouseup', endDrag);
+    document.removeEventListener('touchend', endDrag);
+  }
+})();
+
+// Page 3D: Close share panel → hide page3d (page3c stays underneath)
+document.getElementById('btn-poster-share-close').addEventListener('click', () => {
+  hidePage('page3d');
+});
+
+// ==================== 水印系统完整逻辑 ====================
+const wmData = [
+  { src: 'images/watermarks/data-1.png', label: '单数据', cat: 'data', editable: true },
+  { src: 'images/watermarks/data-2.png', label: '双数据', cat: 'data', editable: true },
+  { src: 'images/watermarks/data-3.png', label: '三数据', cat: 'data', editable: true },
+  { src: 'images/watermarks/data-4.png', label: '四数据', cat: 'data', editable: true },
+  { src: 'images/watermarks/data-5.png', label: '主数据(有背景)', cat: 'data', editable: true },
+  { src: 'images/watermarks/data-6.png', label: '主数据(无背景)', cat: 'data', editable: true },
+  { src: 'images/watermarks/data-7.png', label: '全数据(有背景)', cat: 'data', editable: true },
+  { src: 'images/watermarks/data-8.png', label: '全数据(无背景)', cat: 'data', editable: true },
+  { src: 'images/watermarks/data-9.png', label: '类比-速度', cat: 'data', editable: true },
+  { src: 'images/watermarks/data-10.png', label: '类比-卡路里', cat: 'data', editable: true },
+  { src: 'images/watermarks/data-11.png', label: '数据水印11', cat: 'data', editable: true },
+  { src: 'images/watermarks/data-12.png', label: '数据水印12', cat: 'data', editable: true },
+  { src: 'images/watermarks/chart-training.png', label: '训练表现图', cat: 'chart', editable: true },
+  { src: 'images/watermarks/chart-track.png', label: '轨迹', cat: 'chart', editable: true },
+  { src: 'images/watermarks/chart-curve.png', label: '曲线图', cat: 'chart', editable: true },
+  { src: 'images/watermarks/chart-bar.png', label: '柱状图', cat: 'chart', editable: true },
+  { src: 'images/watermarks/chart-dot.png', label: '点图', cat: 'chart', editable: true },
+  { src: 'images/watermarks/chart-aerobic.png', label: '有氧效果', cat: 'chart', editable: true },
+  { src: 'images/watermarks/chart-anaerobic.png', label: '无氧效果', cat: 'chart', editable: true },
+  { src: 'images/watermarks/chart-swolf.png', label: 'Swolf', cat: 'chart', editable: true },
+  { src: 'images/watermarks/chart-stroke.png', label: '击球姿势', cat: 'chart', editable: true },
+  { src: 'images/watermarks/chart-forebackhand.png', label: '正反手', cat: 'chart', editable: true },
+  { src: 'images/watermarks/other-scene.png', label: '场景', cat: 'other', editable: false },
+  { src: 'images/watermarks/other-avatar.png', label: '头像', cat: 'other', editable: false },
+  { src: 'images/watermarks/other-calendar.png', label: '日历', cat: 'other', editable: false },
+  { src: 'images/watermarks/other-temp.png', label: '温度', cat: 'other', editable: false },
+  { src: 'images/watermarks/other-weather.png', label: '天气', cat: 'other', editable: false },
+  { src: 'images/watermarks/other-location.png', label: '地点', cat: 'other', editable: false },
+  { src: 'images/watermarks/other-slogan.png', label: 'Slogan', cat: 'other', editable: true },
+  { src: 'images/watermarks/other-time.png', label: '运动时间', cat: 'other', editable: false },
+];
+
+const wmPanel = document.getElementById('wm-panel');
+const wmOverlay = document.getElementById('wm-panel-overlay');
+const wmGrid = document.getElementById('wm-panel-grid');
+const wmCanvas = document.getElementById('wm-canvas');
+const wmToast = document.getElementById('wm-toast');
+const wmEditModal = document.getElementById('wm-edit-modal');
+const wmEditGrid = document.getElementById('wm-edit-modal-grid');
+const wmEditTitle = document.getElementById('wm-edit-modal-title');
+const MAX_WATERMARKS = 10;
+let wmZIndex = 16;
+let wmSelectedItem = null;
+
+// 撤回系统
+const wmHistory = [];
+const wmUndoBtn = document.getElementById('btn-poster-undo');
+
+function wmSaveState() {
+  const items = wmCanvas.querySelectorAll('.wm-item');
+  const snapshot = [];
+  items.forEach(el => {
+    snapshot.push({
+      src: el.dataset.src,
+      label: el.dataset.label,
+      cat: el.dataset.cat,
+      editable: el.dataset.editable,
+      locked: el.dataset.locked || '',
+      left: el.style.left,
+      top: el.style.top,
+      width: el.style.width,
+      height: el.style.height,
+      zIndex: el.style.zIndex,
+      transform: el.style.transform,
+      rotation: el._rotation || 0,
+      scale: el._scale || 1,
+    });
+  });
+  wmHistory.push(JSON.stringify(snapshot));
+  wmUndoBtn.classList.add('visible');
+}
+
+function wmUndo() {
+  if (wmHistory.length === 0) return;
+  wmHistory.pop();
+  deselectWm();
+
+  // 清空画布
+  wmCanvas.innerHTML = '';
+
+  if (wmHistory.length === 0) {
+    wmUndoBtn.classList.remove('visible');
+    return;
+  }
+
+  // 恢复上一个快照
+  const snapshot = JSON.parse(wmHistory[wmHistory.length - 1]);
+  snapshot.forEach(state => {
+    const item = {
+      src: state.src,
+      label: state.label,
+      cat: state.cat,
+      editable: state.editable === 'true',
+    };
+    // 创建元素但不再 saveState
+    restoreWatermark(item, state);
+  });
+}
+
+function restoreWatermark(item, state) {
+  const el = document.createElement('div');
+  el.className = 'wm-item';
+  el.style.width = state.width;
+  el.style.height = state.height;
+  el.style.left = state.left;
+  el.style.top = state.top;
+  el.style.zIndex = state.zIndex;
+  el.style.transform = state.transform || '';
+  el.dataset.cat = item.cat;
+  el.dataset.editable = item.editable;
+  el.dataset.label = item.label;
+  el.dataset.src = item.src;
+  el.dataset.locked = state.locked || '';
+  el._rotation = state.rotation;
+  el._scale = state.scale;
+
+  const locked = state.locked === 'true';
+  el.innerHTML = `
+    <img class="wm-item-img" src="${item.src}" alt="${item.label}">
+    ${!locked ? '<div class="wm-item-btn wm-btn-delete" title="删除">✕</div>' : ''}
+    ${item.editable && !locked ? '<div class="wm-item-btn wm-btn-edit" title="编辑">✎</div>' : ''}
+    <div class="wm-item-btn wm-btn-move" title="移动">✥</div>
+    <div class="wm-item-btn wm-btn-resize" title="旋转/缩放">⤡</div>
+  `;
+
+  el.addEventListener('mousedown', (e) => {
+    if (e.target.classList.contains('wm-item-btn')) return;
+    selectWm(el);
+  });
+  el.addEventListener('touchstart', (e) => {
+    if (e.target.classList.contains('wm-item-btn')) return;
+    selectWm(el);
+  });
+
+  const delBtn = el.querySelector('.wm-btn-delete');
+  if (delBtn) {
+    delBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      el.remove();
+      if (wmSelectedItem === el) wmSelectedItem = null;
+      wmSaveState();
+    });
+    delBtn.addEventListener('touchend', (e) => {
+      e.stopPropagation(); e.preventDefault();
+      el.remove();
+      if (wmSelectedItem === el) wmSelectedItem = null;
+      wmSaveState();
+    });
+  }
+
+  const editBtn = el.querySelector('.wm-btn-edit');
+  if (editBtn) {
+    editBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      if (el.classList.contains('editing')) {
+        finishEditing(el);
+      } else {
+        el.classList.add('editing');
+        editBtn.textContent = '完成';
+        openEditModal(el);
+      }
+    });
+    editBtn.addEventListener('touchend', (e) => {
+      e.stopPropagation(); e.preventDefault();
+      if (el.classList.contains('editing')) {
+        finishEditing(el);
+      } else {
+        el.classList.add('editing');
+        editBtn.textContent = '完成';
+        openEditModal(el);
+      }
+    });
+  }
+
+  setupDrag(el);
+  setupResize(el);
+  setupPinch(el);
+  wmCanvas.appendChild(el);
+}
+
+wmUndoBtn.addEventListener('click', wmUndo);
+
+// ---- 颜色编辑逻辑 ----
+const wmColorBtn = document.getElementById('btn-poster-color');
+const wmColorBar = document.getElementById('wm-color-bar');
+const wmColorPresets = document.getElementById('wm-color-presets');
+const wmEyedropper = document.getElementById('wm-eyedropper');
+const wmColorPickerBtn = document.getElementById('wm-color-picker-btn');
+const wmBottomBtns = document.querySelectorAll('.p3c-toolbar, .p3c-canvas-tools');
+let wmColorOrigFilter = '';
+let wmColorActive = false;
+let wmEyedropperActive = false;
+
+function showColorBtn() {
+  if (wmSelectedItem && !wmColorActive) {
+    wmColorBtn.classList.add('visible');
+  } else {
+    wmColorBtn.classList.remove('visible');
+  }
+}
+
+function openColorEditor() {
+  if (!wmSelectedItem) return;
+  wmColorActive = true;
+  wmColorOrigFilter = wmSelectedItem.querySelector('.wm-item-img').style.filter || '';
+
+  // 隐藏底部工具栏按钮
+  wmBottomBtns.forEach(btn => btn.style.display = 'none');
+  wmColorBtn.classList.remove('visible');
+  wmUndoBtn.classList.remove('visible');
+
+  // 显示颜色编辑栏
+  wmColorBar.classList.add('show');
+  wmColorPresets.classList.add('show');
+
+  // 清除预设选中
+  document.querySelectorAll('.wm-color-dot').forEach(d => d.classList.remove('selected'));
+}
+
+function closeColorEditor(apply) {
+  wmColorActive = false;
+
+  if (!apply && wmSelectedItem) {
+    wmSelectedItem.querySelector('.wm-item-img').style.filter = wmColorOrigFilter;
+  } else if (apply && wmSelectedItem) {
+    wmSaveState();
+  }
+
+  // 隐藏颜色栏
+  wmColorBar.classList.remove('show');
+  wmColorPresets.classList.remove('show');
+  wmEyedropper.classList.remove('show');
+  wmEyedropperActive = false;
+  wmColorPickerBtn.classList.remove('active');
+
+  // 恢复底部按钮
+  wmBottomBtns.forEach(btn => btn.style.display = '');
+  showColorBtn();
+  if (wmHistory.length > 0) wmUndoBtn.classList.add('visible');
+}
+
+function applyColorToWm(color) {
+  if (!wmSelectedItem) return;
+  const img = wmSelectedItem.querySelector('.wm-item-img');
+  if (color === '#ffffff') {
+    img.style.filter = '';
+  } else {
+    // 用 drop-shadow 模拟颜色叠加，或用 CSS filter hue-rotate + saturate
+    // 更好的方式：用 svg filter 或 mix-blend，这里用简单的 CSS 着色
+    const r = parseInt(color.slice(1,3), 16);
+    const g = parseInt(color.slice(3,5), 16);
+    const b = parseInt(color.slice(5,7), 16);
+    // 计算色相角度
+    const hue = rgbToHue(r, g, b);
+    const sat = rgbToSat(r, g, b);
+    img.style.filter = `sepia(1) saturate(${sat > 50 ? 3 : 1}) hue-rotate(${hue}deg) brightness(${color === '#000000' ? 0.3 : 1})`;
+  }
+}
+
+function rgbToHue(r, g, b) {
+  r /= 255; g /= 255; b /= 255;
+  const max = Math.max(r, g, b), min = Math.min(r, g, b);
+  let h = 0;
+  if (max === min) h = 0;
+  else if (max === r) h = 60 * ((g - b) / (max - min));
+  else if (max === g) h = 60 * (2 + (b - r) / (max - min));
+  else h = 60 * (4 + (r - g) / (max - min));
+  if (h < 0) h += 360;
+  return Math.round(h - 50); // offset for sepia base
+}
+
+function rgbToSat(r, g, b) {
+  r /= 255; g /= 255; b /= 255;
+  const max = Math.max(r, g, b), min = Math.min(r, g, b);
+  if (max === 0) return 0;
+  return Math.round(((max - min) / max) * 100);
+}
+
+// 颜色按钮点击
+wmColorBtn.addEventListener('click', openColorEditor);
+
+// 确认/取消
+document.getElementById('wm-color-confirm').addEventListener('click', () => closeColorEditor(true));
+document.getElementById('wm-color-cancel').addEventListener('click', () => closeColorEditor(false));
+
+// 预设颜色点击
+document.querySelectorAll('.wm-color-dot').forEach(dot => {
+  dot.addEventListener('click', () => {
+    document.querySelectorAll('.wm-color-dot').forEach(d => d.classList.remove('selected'));
+    dot.classList.add('selected');
+    applyColorToWm(dot.dataset.color);
+    // 退出取色器模式
+    wmEyedropper.classList.remove('show');
+    wmEyedropperActive = false;
+    wmColorPickerBtn.classList.remove('active');
+  });
+});
+
+// 取色器按钮
+wmColorPickerBtn.addEventListener('click', () => {
+  if (wmEyedropperActive) {
+    wmEyedropper.classList.remove('show');
+    wmEyedropperActive = false;
+    wmColorPickerBtn.classList.remove('active');
+  } else {
+    wmEyedropperActive = true;
+    wmColorPickerBtn.classList.add('active');
+    // 取色器与预设互斥：清除预设选中
+    document.querySelectorAll('.wm-color-dot').forEach(d => d.classList.remove('selected'));
+    // 显示取色器在画布中央
+    const cx = (wmCanvas.offsetWidth - 80) / 2;
+    const cy = (wmCanvas.offsetHeight - 80) / 2;
+    wmEyedropper.style.left = cx + 'px';
+    wmEyedropper.style.top = (cy + 54) + 'px';
+    wmEyedropper.classList.add('show');
+  }
+});
+
+// 取色器拖拽（限制在背景图区域内）
+(function() {
+  let dragStartX, dragStartY, origLeft, origTop;
+  const eyeSize = 80;
+
+  function clampToBackground(left, top) {
+    const canvas = document.getElementById('p3c-canvas');
+    const page = document.getElementById('page3c');
+    const canvasRect = canvas.getBoundingClientRect();
+    const pageRect = page.getBoundingClientRect();
+    const offsetX = canvasRect.left - pageRect.left;
+    const offsetY = canvasRect.top - pageRect.top;
+    return {
+      left: Math.max(offsetX, Math.min(left, offsetX + canvas.offsetWidth - eyeSize)),
+      top: Math.max(offsetY, Math.min(top, offsetY + canvas.offsetHeight - eyeSize))
+    };
+  }
+
+  wmEyedropper.addEventListener('mousedown', (e) => {
+    e.preventDefault();
+    dragStartX = e.clientX; dragStartY = e.clientY;
+    origLeft = parseInt(wmEyedropper.style.left);
+    origTop = parseInt(wmEyedropper.style.top);
+    const onMove = (ev) => {
+      const pos = clampToBackground(origLeft + ev.clientX - dragStartX, origTop + ev.clientY - dragStartY);
+      wmEyedropper.style.left = pos.left + 'px';
+      wmEyedropper.style.top = pos.top + 'px';
+      sampleColorAtEyedropper();
+    };
+    const onUp = () => {
+      document.removeEventListener('mousemove', onMove);
+      document.removeEventListener('mouseup', onUp);
+    };
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseup', onUp);
+  });
+
+  wmEyedropper.addEventListener('touchstart', (e) => {
+    e.preventDefault();
+    const t = e.touches[0];
+    dragStartX = t.clientX; dragStartY = t.clientY;
+    origLeft = parseInt(wmEyedropper.style.left);
+    origTop = parseInt(wmEyedropper.style.top);
+  });
+  wmEyedropper.addEventListener('touchmove', (e) => {
+    e.preventDefault();
+    const t = e.touches[0];
+    const pos = clampToBackground(origLeft + t.clientX - dragStartX, origTop + t.clientY - dragStartY);
+    wmEyedropper.style.left = pos.left + 'px';
+    wmEyedropper.style.top = pos.top + 'px';
+    sampleColorAtEyedropper();
+  });
+})();
+
+function sampleColorAtEyedropper() {
+  if (!wmSelectedItem) return;
+  const canvasEl = document.getElementById('p3c-canvas');
+  const bgImg = document.getElementById('p3c-bg-img');
+  if (!bgImg || bgImg.style.display === 'none') return;
+
+  // 取色器中心相对于page3c的坐标
+  const eyeCenterX = parseInt(wmEyedropper.style.left) + 40;
+  const eyeCenterY = parseInt(wmEyedropper.style.top) + 40;
+
+  // 减去canvas相对于page3c的偏移，得到相对于背景图的坐标
+  const pageEl = document.getElementById('page3c');
+  const canvasRect = canvasEl.getBoundingClientRect();
+  const pageRect = pageEl.getBoundingClientRect();
+  const canvasOffsetX = canvasRect.left - pageRect.left;
+  const canvasOffsetY = canvasRect.top - pageRect.top;
+  const ex = eyeCenterX - canvasOffsetX;
+  const ey = eyeCenterY - canvasOffsetY;
+
+  // 用 canvas 采样背景色
+  if (!window._wmBgCanvas || window._wmBgSrc !== bgImg.src) {
+    window._wmBgCanvas = document.createElement('canvas');
+    window._wmBgCtx = window._wmBgCanvas.getContext('2d');
+    window._wmBgReady = false;
+    window._wmBgSrc = bgImg.src;
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = () => {
+      window._wmBgCanvas.width = img.naturalWidth;
+      window._wmBgCanvas.height = img.naturalHeight;
+      window._wmBgCtx.drawImage(img, 0, 0);
+      window._wmBgReady = true;
+      doSample(ex, ey, bgImg);
+    };
+    img.src = bgImg.src;
+  } else if (window._wmBgReady) {
+    doSample(ex, ey, bgImg);
+  }
+}
+
+function doSample(ex, ey, bgImg) {
+  const scaleX = window._wmBgCanvas.width / bgImg.offsetWidth;
+  const scaleY = window._wmBgCanvas.height / bgImg.offsetHeight;
+  const px = Math.round(ex * scaleX);
+  const py = Math.round(ey * scaleY);
+  const data = window._wmBgCtx.getImageData(
+    Math.max(0, Math.min(px, window._wmBgCanvas.width - 1)),
+    Math.max(0, Math.min(py, window._wmBgCanvas.height - 1)),
+    1, 1
+  ).data;
+  const color = `#${data[0].toString(16).padStart(2,'0')}${data[1].toString(16).padStart(2,'0')}${data[2].toString(16).padStart(2,'0')}`;
+  applyColorToWm(color);
+  wmEyedropper.querySelector('.wm-eyedropper-ring').style.borderColor = color;
+}
+
+
+// ---- 全屏预览逻辑 ----
+const wmFullscreenBtn = document.getElementById('btn-poster-fullscreen');
+const wmFullscreenOverlay = document.getElementById('wm-fullscreen-overlay');
+const page3cEl = document.getElementById('page3c');
+
+wmFullscreenBtn.addEventListener('click', () => {
+  deselectWm();
+  page3cEl.classList.add('wm-fullscreen');
+});
+
+wmFullscreenOverlay.addEventListener('click', () => {
+  page3cEl.classList.remove('wm-fullscreen');
+});
+
+function getWmItems() {
+  return wmCanvas.querySelectorAll('.wm-item');
+}
+
+// ---- 弹窗网格渲染 ----
+function renderWmGrid(cat) {
+  wmGrid.innerHTML = '';
+  const grid = document.createElement('div');
+  grid.style.cssText = 'display:grid;grid-template-columns:1fr 1fr;gap:10px;';
+  const items = cat === 'all' ? wmData : wmData.filter(d => d.cat === cat);
+  items.forEach(item => {
+    const div = document.createElement('div');
+    div.className = 'wm-grid-item';
+    const previewSrc = item.src.replace('images/watermarks/', 'images/watermarks/preview/');
+    div.innerHTML = `<img src="${previewSrc}" alt="${item.label}"><span class="wm-label">${item.label}</span>`;
+    div.addEventListener('click', () => addWatermarkToCanvas(item));
+    grid.appendChild(div);
+  });
+  wmGrid.appendChild(grid);
+}
+
+function openWmPanel() {
+  deselectWm();
+  wmOverlay.classList.add('show');
+  wmPanel.classList.add('show');
+  renderWmGrid('all');
+  document.querySelectorAll('.wm-tab').forEach(t => t.classList.remove('active'));
+  document.querySelector('.wm-tab[data-wm-tab="all"]').classList.add('active');
+}
+
+function closeWmPanel() {
+  wmPanel.classList.remove('show');
+  wmOverlay.classList.remove('show');
+}
+
+function showWmToast(msg) {
+  wmToast.textContent = msg || '模板数量已达上限！';
+  wmToast.classList.add('show');
+  setTimeout(() => wmToast.classList.remove('show'), 2000);
+}
+
+// ---- 选中/取消选中 ----
+function selectWm(el) {
+  if (wmSelectedItem && wmSelectedItem !== el) {
+    finishEditing(wmSelectedItem);
+    wmSelectedItem.classList.remove('selected');
+  }
+  wmSelectedItem = el;
+  el.classList.add('selected');
+  wmZIndex++;
+  el.style.zIndex = wmZIndex;
+  showColorBtn();
+}
+
+function deselectWm() {
+  if (wmSelectedItem) {
+    finishEditing(wmSelectedItem);
+    wmSelectedItem.classList.remove('selected');
+    wmSelectedItem = null;
+  }
+  showColorBtn();
+}
+
+function finishEditing(el) {
+  if (el && el.classList.contains('editing')) {
+    el.classList.remove('editing');
+    const editBtn = el.querySelector('.wm-btn-edit');
+    if (editBtn) editBtn.textContent = '✎';
+  }
+}
+
+// ---- 添加水印到画布 ----
+function addWatermarkToCanvas(item) {
+  if (getWmItems().length >= MAX_WATERMARKS) {
+    showWmToast();
+    return;
+  }
+  closeWmPanel();
+
+  const el = document.createElement('div');
+  el.className = 'wm-item';
+  el.style.width = '120px';
+  el.style.height = '120px';
+  el.dataset.cat = item.cat;
+  el.dataset.editable = item.editable;
+  el.dataset.label = item.label;
+  el.dataset.src = item.src;
+  el._rotation = 0;
+  el._scale = 1;
+
+  const cx = (wmCanvas.offsetWidth - 120) / 2;
+  const cy = (wmCanvas.offsetHeight - 120) / 2;
+  el.style.left = cx + 'px';
+  el.style.top = cy + 'px';
+  wmZIndex++;
+  el.style.zIndex = wmZIndex;
+
+  // 构建内部结构: 图片 + 4个角按钮
+  el.innerHTML = `
+    <img class="wm-item-img" src="${item.src}" alt="${item.label}">
+    <div class="wm-item-btn wm-btn-delete" title="删除">✕</div>
+    ${item.editable ? '<div class="wm-item-btn wm-btn-edit" title="编辑">✎</div>' : ''}
+    <div class="wm-item-btn wm-btn-move" title="移动">✥</div>
+    <div class="wm-item-btn wm-btn-resize" title="旋转/缩放">⤡</div>
+  `;
+
+  // 点击选中
+  el.addEventListener('mousedown', (e) => {
+    if (e.target.classList.contains('wm-item-btn')) return;
+    selectWm(el);
+  });
+  el.addEventListener('touchstart', (e) => {
+    if (e.target.classList.contains('wm-item-btn')) return;
+    selectWm(el);
+  });
+
+  // 删除按钮
+  el.querySelector('.wm-btn-delete').addEventListener('click', (e) => {
+    e.stopPropagation();
+    el.remove();
+    if (wmSelectedItem === el) wmSelectedItem = null;
+  });
+  el.querySelector('.wm-btn-delete').addEventListener('touchend', (e) => {
+    e.stopPropagation();
+    e.preventDefault();
+    el.remove();
+    if (wmSelectedItem === el) wmSelectedItem = null;
+  });
+
+  // 编辑按钮
+  const editBtn = el.querySelector('.wm-btn-edit');
+  if (editBtn) {
+    editBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      if (el.classList.contains('editing')) {
+        finishEditing(el);
+      } else {
+        el.classList.add('editing');
+        editBtn.textContent = '完成';
+        openEditModal(el);
+      }
+    });
+    editBtn.addEventListener('touchend', (e) => {
+      e.stopPropagation();
+      e.preventDefault();
+      if (el.classList.contains('editing')) {
+        finishEditing(el);
+      } else {
+        el.classList.add('editing');
+        editBtn.textContent = '完成';
+        openEditModal(el);
+      }
+    });
+  }
+
+  // 移动按钮 + 直接拖拽
+  setupDrag(el);
+
+  // 缩放/旋转按钮
+  setupResize(el);
+
+  // 双指缩放旋转
+  setupPinch(el);
+
+  wmCanvas.appendChild(el);
+  selectWm(el);
+  wmSaveState();
+}
+
+// ---- 拖拽移动 ----
+function setupDrag(el) {
+  let startX, startY, origX, origY, isDragging = false;
+
+  function onStart(cx, cy, e) {
+    if (e && e.target.classList.contains('wm-item-btn')) return;
+    selectWm(el);
+    startX = cx; startY = cy;
+    origX = parseInt(el.style.left);
+    origY = parseInt(el.style.top);
+    isDragging = true;
+    el.classList.add('dragging');
+  }
+
+  function onMove(cx, cy) {
+    if (!isDragging) return;
+    el.style.left = (origX + cx - startX) + 'px';
+    el.style.top = (origY + cy - startY) + 'px';
+  }
+
+  function onEnd() {
+    if (isDragging) wmSaveState();
+    isDragging = false;
+    el.classList.remove('dragging');
+  }
+
+  // Touch
+  el.addEventListener('touchstart', (e) => {
+    if (e.touches.length !== 1) return;
+    onStart(e.touches[0].clientX, e.touches[0].clientY, e);
+  });
+  el.addEventListener('touchmove', (e) => {
+    if (e.touches.length !== 1) return;
+    e.preventDefault();
+    onMove(e.touches[0].clientX, e.touches[0].clientY);
+  });
+  el.addEventListener('touchend', onEnd);
+
+  // Mouse
+  el.addEventListener('mousedown', (e) => {
+    if (e.target.classList.contains('wm-item-btn')) return;
+    onStart(e.clientX, e.clientY, e);
+    const moveHandler = (ev) => onMove(ev.clientX, ev.clientY);
+    const upHandler = () => {
+      onEnd();
+      document.removeEventListener('mousemove', moveHandler);
+      document.removeEventListener('mouseup', upHandler);
+    };
+    document.addEventListener('mousemove', moveHandler);
+    document.addEventListener('mouseup', upHandler);
+  });
+
+  // 移动按钮：同样触发拖拽(但专门用于移动语义)
+  const moveBtn = el.querySelector('.wm-btn-move');
+  moveBtn.addEventListener('mousedown', (e) => {
+    e.stopPropagation();
+    startX = e.clientX; startY = e.clientY;
+    origX = parseInt(el.style.left);
+    origY = parseInt(el.style.top);
+    isDragging = true;
+    el.classList.add('dragging');
+    const moveHandler = (ev) => onMove(ev.clientX, ev.clientY);
+    const upHandler = () => {
+      onEnd();
+      document.removeEventListener('mousemove', moveHandler);
+      document.removeEventListener('mouseup', upHandler);
+    };
+    document.addEventListener('mousemove', moveHandler);
+    document.addEventListener('mouseup', upHandler);
+  });
+  moveBtn.addEventListener('touchstart', (e) => {
+    e.stopPropagation();
+    const t = e.touches[0];
+    startX = t.clientX; startY = t.clientY;
+    origX = parseInt(el.style.left);
+    origY = parseInt(el.style.top);
+    isDragging = true;
+    el.classList.add('dragging');
+  });
+  moveBtn.addEventListener('touchmove', (e) => {
+    e.stopPropagation();
+    e.preventDefault();
+    onMove(e.touches[0].clientX, e.touches[0].clientY);
+  });
+  moveBtn.addEventListener('touchend', (e) => {
+    e.stopPropagation();
+    onEnd();
+  });
+}
+
+// ---- 右下角缩放/旋转手柄 ----
+function setupResize(el) {
+  const resizeBtn = el.querySelector('.wm-btn-resize');
+  let startX, startY, startW, startH, startRot, centerX, centerY;
+
+  function getCenter() {
+    const l = parseInt(el.style.left);
+    const t = parseInt(el.style.top);
+    const w = el.offsetWidth;
+    const h = el.offsetHeight;
+    return { x: l + w/2, y: t + h/2 };
+  }
+
+  function onStart(cx, cy) {
+    startX = cx; startY = cy;
+    startW = el.offsetWidth;
+    startH = el.offsetHeight;
+    startRot = el._rotation || 0;
+    const c = getCenter();
+    centerX = c.x + wmCanvas.getBoundingClientRect().left;
+    centerY = c.y + wmCanvas.getBoundingClientRect().top;
+  }
+
+  function onMove(cx, cy) {
+    // 缩放：根据距离中心的变化
+    const dx = cx - centerX;
+    const dy = cy - centerY;
+    const dist = Math.sqrt(dx*dx + dy*dy);
+    const startDx = startX - centerX;
+    const startDy = startY - centerY;
+    const startDist = Math.sqrt(startDx*startDx + startDy*startDy);
+    const scale = Math.max(0.4, Math.min(3, dist / (startDist || 1)));
+    const newW = Math.round(startW * scale);
+    const newH = Math.round(startH * scale);
+    el.style.width = newW + 'px';
+    el.style.height = newH + 'px';
+    el._scale = scale;
+
+    // 旋转：根据角度变化
+    const angle = Math.atan2(dy, dx);
+    const startAngle = Math.atan2(startDy, startDx);
+    const rot = startRot + (angle - startAngle) * (180 / Math.PI);
+    el._rotation = rot;
+    el.style.transform = `rotate(${rot}deg)`;
+  }
+
+  // Mouse
+  resizeBtn.addEventListener('mousedown', (e) => {
+    e.stopPropagation();
+    e.preventDefault();
+    onStart(e.clientX, e.clientY);
+    const moveHandler = (ev) => onMove(ev.clientX, ev.clientY);
+    const upHandler = () => {
+      wmSaveState();
+      document.removeEventListener('mousemove', moveHandler);
+      document.removeEventListener('mouseup', upHandler);
+    };
+    document.addEventListener('mousemove', moveHandler);
+    document.addEventListener('mouseup', upHandler);
+  });
+
+  // Touch
+  resizeBtn.addEventListener('touchstart', (e) => {
+    e.stopPropagation();
+    e.preventDefault();
+    onStart(e.touches[0].clientX, e.touches[0].clientY);
+  });
+  resizeBtn.addEventListener('touchmove', (e) => {
+    e.stopPropagation();
+    e.preventDefault();
+    onMove(e.touches[0].clientX, e.touches[0].clientY);
+  });
+  resizeBtn.addEventListener('touchend', (e) => {
+    e.stopPropagation();
+    wmSaveState();
+  });
+}
+
+// ---- 双指捏合缩放旋转 ----
+function setupPinch(el) {
+  let initDist = 0, initAngle = 0, initScale = 1, initRot = 0;
+
+  el.addEventListener('touchstart', (e) => {
+    if (e.touches.length === 2) {
+      const t1 = e.touches[0], t2 = e.touches[1];
+      initDist = Math.hypot(t2.clientX - t1.clientX, t2.clientY - t1.clientY);
+      initAngle = Math.atan2(t2.clientY - t1.clientY, t2.clientX - t1.clientX);
+      initScale = el._scale || 1;
+      initRot = el._rotation || 0;
+    }
+  });
+
+  el.addEventListener('touchmove', (e) => {
+    if (e.touches.length === 2) {
+      e.preventDefault();
+      const t1 = e.touches[0], t2 = e.touches[1];
+      const dist = Math.hypot(t2.clientX - t1.clientX, t2.clientY - t1.clientY);
+      const angle = Math.atan2(t2.clientY - t1.clientY, t2.clientX - t1.clientX);
+
+      const scaleFactor = dist / (initDist || 1);
+      const newScale = Math.max(0.4, Math.min(3, initScale * scaleFactor));
+      const newW = Math.round(120 * newScale);
+      el.style.width = newW + 'px';
+      el.style.height = newW + 'px';
+      el._scale = newScale;
+
+      const rotDelta = (angle - initAngle) * (180 / Math.PI);
+      el._rotation = initRot + rotDelta;
+      el.style.transform = `rotate(${el._rotation}deg)`;
+    }
+  });
+}
+
+// ---- 编辑弹窗逻辑 ----
+let wmEditTarget = null;
+let wmEditSelected = null;
+
+function openEditModal(el) {
+  wmEditTarget = el;
+  wmEditSelected = null;
+  const cat = el.dataset.cat;
+  const label = el.dataset.label;
+
+  if (cat === 'data') {
+    wmEditTitle.textContent = '选择数据水印';
+    const dataItems = wmData.filter(d => d.cat === 'data');
+    wmEditGrid.innerHTML = dataItems.map((d, i) =>
+      `<div class="wm-edit-option${d.src === el.dataset.src ? ' selected' : ''}" data-idx="${i}" data-src="${d.src}">
+        <img src="${d.src}" style="width:100%;border-radius:4px;">
+        <span>${d.label}</span>
+      </div>`
+    ).join('');
+  } else if (cat === 'chart') {
+    wmEditTitle.textContent = '选择图表水印';
+    const chartItems = wmData.filter(d => d.cat === 'chart');
+    wmEditGrid.innerHTML = chartItems.map((d, i) =>
+      `<div class="wm-edit-option${d.src === el.dataset.src ? ' selected' : ''}" data-idx="${i}" data-src="${d.src}">
+        <img src="${d.src}" style="width:100%;border-radius:4px;">
+        <span>${d.label}</span>
+      </div>`
+    ).join('');
+  } else {
+    wmEditTitle.textContent = '编辑 Slogan';
+    const slogans = ['每一步，都值得', '坚持改变，持续蜕变', '汗水为证', '坚持永无极限', '挑战自我，迎接成长', '生命不息，运动不止', '为不凡突破极限'];
+    wmEditGrid.innerHTML = slogans.map((s, i) =>
+      `<div class="wm-edit-option" data-idx="${i}" data-slogan="${s}">
+        <span>${s}</span>
+      </div>`
+    ).join('');
+  }
+
+  // 选项点击
+  wmEditGrid.querySelectorAll('.wm-edit-option').forEach(opt => {
+    opt.addEventListener('click', () => {
+      wmEditGrid.querySelectorAll('.wm-edit-option').forEach(o => o.classList.remove('selected'));
+      opt.classList.add('selected');
+      wmEditSelected = opt;
+    });
+  });
+
+  wmEditModal.classList.add('show');
+}
+
+function closeEditModal(apply) {
+  if (apply && wmEditSelected && wmEditTarget) {
+    const newSrc = wmEditSelected.dataset.src;
+    if (newSrc) {
+      wmEditTarget.querySelector('.wm-item-img').src = newSrc;
+      wmEditTarget.dataset.src = newSrc;
+      wmSaveState();
+    }
+  }
+  wmEditModal.classList.remove('show');
+  wmEditTarget = null;
+  wmEditSelected = null;
+}
+
+document.getElementById('wm-edit-confirm').addEventListener('click', () => closeEditModal(true));
+document.getElementById('wm-edit-cancel').addEventListener('click', () => closeEditModal(false));
+
+// ---- 点击画布空白区域取消选中 ----
+wmCanvas.addEventListener('mousedown', (e) => {
+  if (e.target === wmCanvas) deselectWm();
+});
+wmCanvas.addEventListener('touchstart', (e) => {
+  if (e.target === wmCanvas) deselectWm();
+});
+
+// ---- 打开/关闭弹窗 ----
+document.getElementById('btn-poster-add-watermark').addEventListener('click', openWmPanel);
+wmOverlay.addEventListener('click', closeWmPanel);
+
+// Tab 切换
+document.querySelectorAll('.wm-tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    document.querySelectorAll('.wm-tab').forEach(t => t.classList.remove('active'));
+    tab.classList.add('active');
+    renderWmGrid(tab.dataset.wmTab);
+  });
+});
+
+// 下拉关闭弹窗
+let wmDragStartY = 0;
+const wmHandle = document.querySelector('.wm-panel-handle');
+wmHandle.addEventListener('touchstart', (e) => { wmDragStartY = e.touches[0].clientY; });
+wmHandle.addEventListener('touchmove', (e) => {
+  const dy = e.touches[0].clientY - wmDragStartY;
+  if (dy > 0) wmPanel.style.transform = `translateY(${dy}px)`;
+});
+wmHandle.addEventListener('touchend', (e) => {
+  const dy = e.changedTouches[0].clientY - wmDragStartY;
+  wmPanel.style.transform = '';
+  if (dy > 80) closeWmPanel();
+});
+wmHandle.addEventListener('mousedown', (e) => {
+  wmDragStartY = e.clientY;
+  const onMove = (ev) => {
+    const dy = ev.clientY - wmDragStartY;
+    if (dy > 0) wmPanel.style.transform = `translateY(${dy}px)`;
+  };
+  const onUp = (ev) => {
+    const dy = ev.clientY - wmDragStartY;
+    wmPanel.style.transform = '';
+    if (dy > 80) closeWmPanel();
+    document.removeEventListener('mousemove', onMove);
+    document.removeEventListener('mouseup', onUp);
+  };
+  document.addEventListener('mousemove', onMove);
+  document.addEventListener('mouseup', onUp);
+});
+
+// Page 4: Track if user has edited
+let hasVideoEdited = false;
+
+// Page 4: Back button with confirm logic
+document.getElementById('btn-video-back').addEventListener('click', () => {
+  if (hasVideoEdited) {
+    showPage('page4a', false);
+  } else {
+    resetVideoEditor();
+    switchPage('page4', 'page2', false);
+  }
+});
+
+// Page 4: Share → recording → share panel
+document.getElementById('btn-video-share').addEventListener('click', () => {
+  switchPage('page4', 'page4b', false);
+  setTimeout(() => {
+    switchPage('page4b', 'page4c', false);
+  }, 2000);
+});
+
+// Page 4A: Cancel → back to page4
+document.getElementById('btn-video-confirm-cancel').addEventListener('click', () => {
+  switchPage('page4a', 'page4', false);
+});
+
+// Page 4A: Confirm exit → back to page2
+document.getElementById('btn-video-confirm-exit').addEventListener('click', () => {
+  resetVideoEditor();
+  switchPage('page4a', 'page2', false);
+});
+
+function resetVideoEditor() {
+  hasVideoEdited = false;
+  hasPhotosAdded = false;
+  selectedPhotos = [];
+  // Stop music
+  stopMusic();
+  // Reset thumbnails
+  document.getElementById('p4-photo-thumbs').querySelectorAll('.p4-photo-thumb').forEach(t => t.remove());
+  // Reset map/track selection to default (classic + classic)
+  document.querySelectorAll('#page4 .p4-map-opt').forEach(o => o.classList.remove('selected'));
+  document.querySelector('#page4 .p4-map-opt[data-map="classic"]').classList.add('selected');
+  document.querySelector('#page4 .p4-map-opt[data-track="classic"]').classList.add('selected');
+  // Reset music to none
+  document.querySelectorAll('.p4-music-opt').forEach(o => o.classList.remove('selected'));
+  document.querySelector('.p4-music-opt[data-music="none"]').classList.add('selected');
+  // Reset tab to first
+  document.querySelectorAll('.p4-tab').forEach(t => t.classList.remove('active'));
+  document.querySelector('.p4-tab[data-tab="photo"]').classList.add('active');
+  document.querySelectorAll('#page4 .p4-tag-group').forEach(g => g.style.display = 'none');
+  document.getElementById('tab-photo').style.display = 'flex';
+  // Reset video to default
+  p4Video.src = 'videos/classic-classic.mp4';
+  p4Video.load();
+  p4PlayBtn.classList.remove('playing');
+}
+
+// Page 4C: Close share panel → back to page4
+document.getElementById('btn-video-share-close').addEventListener('click', () => {
+  switchPage('page4c', 'page4', false);
+});
+
+// Page 4: Tab switching
+document.querySelectorAll('.p4-tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    document.querySelectorAll('.p4-tab').forEach(t => t.classList.remove('active'));
+    tab.classList.add('active');
+    const tabId = tab.dataset.tab;
+    document.querySelectorAll('#page4 .p4-tag-group').forEach(g => g.style.display = 'none');
+    document.getElementById('tab-' + tabId).style.display = 'flex';
+    hasVideoEdited = true;
+  });
+});
+
+// Page 4: Video player controls
+const p4Video = document.getElementById('p4-video');
+const p4PlayBtn = document.getElementById('p4-play-btn');
+const p4ProgressFill = document.getElementById('p4-progress-fill');
+const p4TimeCurrent = document.getElementById('p4-time-current');
+const p4TimeTotal = document.getElementById('p4-time-total');
+const p4ProgressTrack = document.getElementById('p4-progress-track');
+
+function formatTime(sec) {
+  const m = Math.floor(sec / 60);
+  const s = Math.floor(sec % 60);
+  return String(m).padStart(2,'0') + ':' + String(s).padStart(2,'0');
+}
+
+p4Video.addEventListener('loadedmetadata', () => {
+  p4TimeTotal.textContent = formatTime(p4Video.duration);
+});
+
+p4Video.addEventListener('timeupdate', () => {
+  if (p4Video.duration) {
+    p4ProgressFill.style.width = (p4Video.currentTime / p4Video.duration * 100) + '%';
+    p4TimeCurrent.textContent = formatTime(p4Video.currentTime);
+  }
+});
+
+p4PlayBtn.addEventListener('click', () => {
+  if (p4Video.paused) {
+    p4Video.play();
+    p4PlayBtn.classList.add('playing');
+  } else {
+    p4Video.pause();
+    p4PlayBtn.classList.remove('playing');
+  }
+});
+
+p4Video.addEventListener('click', () => {
+  if (p4Video.paused) {
+    p4Video.play();
+    p4PlayBtn.classList.add('playing');
+  } else {
+    p4Video.pause();
+    p4PlayBtn.classList.remove('playing');
+  }
+});
+
+// Progress bar seek
+p4ProgressTrack.addEventListener('click', (e) => {
+  const rect = p4ProgressTrack.getBoundingClientRect();
+  const ratio = (e.clientX - rect.left) / rect.width;
+  p4Video.currentTime = ratio * p4Video.duration;
+});
+
+// Page 4: Map/track style → switch video
+let hasPhotosAdded = false;
+
+const p4VideoMapNormal = {
+  'hide-classic': 'videos/hide-classic.mp4',
+  'hide-fire': 'videos/hide-fire.mp4',
+  'classic-classic': 'videos/classic-classic.mp4',
+  'classic-fire': 'videos/classic-fire.mp4',
+  'satellite-classic': 'videos/satellite-classic.mp4',
+  'satellite-fire': 'videos/satellite-fire.mp4',
+};
+
+const p4VideoMapPhoto = {
+  'hide-classic': 'videos/photo-hide-classic.mp4',
+  'hide-fire': 'videos/photo-hide-fire.mp4',
+  'classic-classic': 'videos/photo-classic-classic.mp4',
+  'classic-fire': 'videos/photo-classic-fire.mp4',
+  'satellite-classic': 'videos/photo-satellite-classic.mp4',
+  'satellite-fire': 'videos/photo-satellite-fire.mp4',
+};
+
+function updateP4Video() {
+  const mapOpt = document.querySelector('#page4 .p4-map-opt[data-map].selected');
+  const trackOpt = document.querySelector('#page4 .p4-map-opt[data-track].selected');
+  if (!mapOpt || !trackOpt) return;
+  const key = mapOpt.dataset.map + '-' + trackOpt.dataset.track;
+  const videoMap = hasPhotosAdded ? p4VideoMapPhoto : p4VideoMapNormal;
+  if (videoMap[key]) {
+    const wasPlaying = !p4Video.paused;
+    p4Video.src = videoMap[key];
+    p4Video.load();
+    if (wasPlaying) {
+      p4Video.play();
+    } else {
+      p4PlayBtn.classList.remove('playing');
+    }
+  }
+}
+
+document.querySelectorAll('#page4 .p4-map-options').forEach(optGroup => {
+  optGroup.addEventListener('click', (e) => {
+    const opt = e.target.closest('.p4-map-opt');
+    if (!opt) return;
+    optGroup.querySelectorAll('.p4-map-opt').forEach(o => o.classList.remove('selected'));
+    opt.classList.add('selected');
+    hasVideoEdited = true;
+    updateP4Video();
+  });
+});
+
+// Page 4: Music with Web Audio synthesis
+let musicAudioCtx = null;
+let musicSource = null;
+let musicPlaying = false;
+
+function getMusicCtx() {
+  if (!musicAudioCtx) musicAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  return musicAudioCtx;
+}
+
+function stopMusic() {
+  if (musicSource) {
+    try { musicSource.stop(); } catch(e) {}
+    musicSource = null;
+  }
+  musicPlaying = false;
+}
+
+function playJump() {
+  const ctx = getMusicCtx();
+  const duration = 8;
+  const buf = ctx.createBuffer(1, ctx.sampleRate * duration, ctx.sampleRate);
+  const data = buf.getChannelData(0);
+  const bpm = 140;
+  const beatLen = 60 / bpm * ctx.sampleRate;
+  for (let i = 0; i < data.length; i++) {
+    const beat = Math.floor(i / beatLen);
+    const posInBeat = (i % beatLen) / beatLen;
+    const kick = posInBeat < 0.1 ? Math.sin(2 * Math.PI * 80 * (1 - posInBeat * 5) * i / ctx.sampleRate) * (1 - posInBeat * 10) : 0;
+    const hihat = (beat % 2 === 1 && posInBeat < 0.05) ? (Math.random() * 2 - 1) * 0.3 * (1 - posInBeat * 20) : 0;
+    const bassNote = [130.81, 164.81, 174.61, 196.00][beat % 4];
+    const bass = Math.sin(2 * Math.PI * bassNote * i / ctx.sampleRate) * 0.2 * (posInBeat < 0.3 ? 1 : Math.max(0, 1 - (posInBeat - 0.3) * 3));
+    data[i] = (kick * 0.6 + hihat + bass) * 0.5;
+  }
+  const source = ctx.createBufferSource();
+  source.buffer = buf;
+  source.loop = true;
+  source.connect(ctx.destination);
+  source.start();
+  return source;
+}
+
+function playMelody() {
+  const ctx = getMusicCtx();
+  const duration = 8;
+  const buf = ctx.createBuffer(1, ctx.sampleRate * duration, ctx.sampleRate);
+  const data = buf.getChannelData(0);
+  // 明亮温暖的大调五声音阶旋律，像清晨阳光
+  const notes = [523.25, 587.33, 659.25, 783.99, 880.00, 783.99, 659.25, 587.33];
+  const noteLen = ctx.sampleRate * 0.5;
+  const padFreqs = [261.63, 329.63, 392.00]; // C大调和弦垫底
+  for (let i = 0; i < data.length; i++) {
+    const t = i / ctx.sampleRate;
+    const noteIdx = Math.floor(i / noteLen) % notes.length;
+    const freq = notes[noteIdx];
+    const posInNote = (i % noteLen) / noteLen;
+    // 柔和的起奏和释放
+    const attack = Math.min(1, posInNote * 8);
+    const release = Math.max(0, 1 - Math.max(0, posInNote - 0.7) * 3.3);
+    const envelope = attack * release;
+    // 温暖的正弦波 + 轻微泛音
+    const tone = Math.sin(2 * Math.PI * freq * t) * 0.7 + Math.sin(2 * Math.PI * freq * 1.5 * t) * 0.15;
+    // 轻柔的和弦垫底
+    let pad = 0;
+    for (const pf of padFreqs) {
+      pad += Math.sin(2 * Math.PI * pf * t) * 0.06;
+    }
+    data[i] = (tone * envelope * 0.3 + pad) * 0.6;
+  }
+  const source = ctx.createBufferSource();
+  source.buffer = buf;
+  source.loop = true;
+  source.connect(ctx.destination);
+  source.start();
+  return source;
+}
+
+function playElectronic() {
+  const ctx = getMusicCtx();
+  const duration = 8;
+  const buf = ctx.createBuffer(1, ctx.sampleRate * duration, ctx.sampleRate);
+  const data = buf.getChannelData(0);
+  const bpm = 128;
+  const beatLen = 60 / bpm * ctx.sampleRate;
+  const freqs = [110, 146.83, 130.81, 164.81];
+  for (let i = 0; i < data.length; i++) {
+    const beat = Math.floor(i / beatLen);
+    const posInBeat = (i % beatLen) / beatLen;
+    const kick = posInBeat < 0.12 ? Math.sin(2 * Math.PI * 60 * (1 - posInBeat * 4) * i / ctx.sampleRate) * (1 - posInBeat * 8) : 0;
+    const synthFreq = freqs[beat % 4];
+    const saw = ((i / ctx.sampleRate * synthFreq) % 1) * 2 - 1;
+    const filter = Math.min(1, posInBeat * 4) * Math.max(0, 1 - posInBeat * 1.5);
+    const synth = saw * filter * 0.25;
+    const arp = Math.sin(2 * Math.PI * synthFreq * 2 * i / ctx.sampleRate) * (posInBeat > 0.5 && posInBeat < 0.65 ? 0.2 : 0);
+    data[i] = (kick * 0.5 + synth + arp) * 0.5;
+  }
+  const source = ctx.createBufferSource();
+  source.buffer = buf;
+  source.loop = true;
+  source.connect(ctx.destination);
+  source.start();
+  return source;
+}
+
+function playMusicByName(name) {
+  stopMusic();
+  if (name === 'none') return;
+  if (name === 'jump') musicSource = playJump();
+  else if (name === 'melody') musicSource = playMelody();
+  else if (name === 'electronic') musicSource = playElectronic();
+  musicPlaying = true;
+}
+
+document.querySelectorAll('.p4-music-opt').forEach(opt => {
+  opt.addEventListener('click', () => {
+    document.querySelectorAll('.p4-music-opt').forEach(o => o.classList.remove('selected'));
+    opt.classList.add('selected');
+    hasVideoEdited = true;
+    playMusicByName(opt.dataset.music);
+  });
+});
+
+// ==================== Page 4D: 添加图片 ====================
+const p4dGrid = document.getElementById('p4d-grid');
+const p4dHintText = document.getElementById('p4d-hint-text');
+const p4dLoading = document.getElementById('p4d-loading');
+const p4PhotoThumbs = document.getElementById('p4-photo-thumbs');
+const MAX_PHOTOS = 15;
+let selectedPhotos = [];
+
+// Generate mock photo grid (24 items with colored placeholders)
+const mockColors = [
+  '#e74c3c','#3498db','#2ecc71','#9b59b6','#f39c12','#1abc9c',
+  '#e67e22','#34495e','#16a085','#c0392b','#2980b9','#8e44ad',
+  '#27ae60','#d35400','#f1c40f','#7f8c8d','#e74c3c','#3498db',
+  '#2ecc71','#9b59b6','#f39c12','#1abc9c','#e67e22','#34495e'
+];
+
+function initPhotoGrid() {
+  p4dGrid.innerHTML = '';
+  for (let i = 0; i < 24; i++) {
+    const item = document.createElement('div');
+    item.className = 'p4d-photo-item';
+    item.dataset.index = i;
+    item.innerHTML = `<div style="width:100%;height:100%;background:${mockColors[i]};display:flex;align-items:center;justify-content:center;color:#fff;font-size:11px;">照片 ${i+1}</div><div class="p4d-photo-check"></div>`;
+    item.addEventListener('click', () => togglePhoto(item, i));
+    p4dGrid.appendChild(item);
+  }
+}
+
+function togglePhoto(item, index) {
+  if (item.classList.contains('selected')) {
+    item.classList.remove('selected');
+    selectedPhotos = selectedPhotos.filter(p => p !== index);
+  } else {
+    if (selectedPhotos.length >= MAX_PHOTOS) return;
+    item.classList.add('selected');
+    selectedPhotos.push(index);
+  }
+  p4dHintText.textContent = `还有 ${MAX_PHOTOS - selectedPhotos.length} 张照片可选`;
+}
+
+// Open add photo page
+document.getElementById('btn-add-photo').addEventListener('click', () => {
+  initPhotoGrid();
+  selectedPhotos = [];
+  p4dHintText.textContent = `还有 ${MAX_PHOTOS} 张照片可选`;
+  p4dLoading.classList.remove('active');
+  switchPage('page4', 'page4d', true);
+});
+
+// Back from photo page
+document.getElementById('btn-photo-back').addEventListener('click', () => {
+  switchPage('page4d', 'page4', false);
+});
+
+// Confirm add photos
+document.getElementById('btn-photo-confirm').addEventListener('click', () => {
+  if (selectedPhotos.length === 0) {
+    switchPage('page4d', 'page4', false);
+    return;
+  }
+  p4dLoading.classList.add('active');
+  setTimeout(() => {
+    p4dLoading.classList.remove('active');
+    selectedPhotos = selectedPhotos.slice(0, 4);
+    if (selectedPhotos.length < 4) {
+      const available = Array.from({length: 24}, (_, i) => i).filter(i => !selectedPhotos.includes(i));
+      while (selectedPhotos.length < 4) {
+        selectedPhotos.push(available.shift());
+      }
+    }
+    hasPhotosAdded = true;
+    renderPhotoThumbs();
+    updateP4Video();
+    hasVideoEdited = true;
+    switchPage('page4d', 'page4', false);
+  }, 2000);
+});
+
+function renderPhotoThumbs() {
+  const addBtn = document.getElementById('btn-add-photo');
+  p4PhotoThumbs.querySelectorAll('.p4-photo-thumb').forEach(t => t.remove());
+  selectedPhotos.forEach((idx) => {
+    const thumb = document.createElement('div');
+    thumb.className = 'p4-photo-thumb';
+    thumb.innerHTML = `<div style="width:100%;height:100%;background:${mockColors[idx]};display:flex;align-items:center;justify-content:center;color:#fff;font-size:9px;">${idx+1}</div><div class="p4-photo-thumb-remove" data-idx="${idx}">×</div>`;
+    thumb.querySelector('.p4-photo-thumb-remove').addEventListener('click', (e) => {
+      e.stopPropagation();
+      selectedPhotos = selectedPhotos.filter(p => p !== idx);
+      if (selectedPhotos.length === 0) {
+        hasPhotosAdded = false;
+      }
+      renderPhotoThumbs();
+      updateP4Video();
+    });
+    p4PhotoThumbs.appendChild(thumb);
+  });
+}
+
+
+// Page 5: Track if user has edited anything
+let hasEdited = false;
+
+// Page 5: Back button logic
+document.getElementById('btn-report-edit-back').addEventListener('click', () => {
+  if (hasEdited) {
+    showPage('page5a', false);
+  } else {
+    switchPage('page5', 'page2', false);
+  }
+});
+
+// Page 5: Share button → show share panel
+document.getElementById('btn-report-edit-share').addEventListener('click', () => {
+  switchPage('page5', 'page5b', false);
+});
+
+// Page 5A: Confirm exit → back to share style selection
+document.getElementById('btn-confirm-exit').addEventListener('click', () => {
+  hasEdited = false;
+  hidePage('page5a');
+  switchPage('page5', 'page2', false);
+});
+
+// Page 5A: Continue editing → back to page 5
+document.getElementById('btn-continue-edit').addEventListener('click', () => {
+  hidePage('page5a');
+});
+
+// Page 5B: Close share panel → back to page 5
+document.getElementById('btn-share-panel-close').addEventListener('click', () => {
+  switchPage('page5b', 'page5', false);
+});
+
+// ==================== Page 5: Module-based editing ====================
+
+const reportCard = document.getElementById('p5-report-card');
+const scrollHint = document.getElementById('p5-scroll-hint');
+
+// Scroll hint: hide immediately on scroll
+let scrollHintDismissed = false;
+reportCard.addEventListener('scroll', () => {
+  if (!scrollHintDismissed) {
+    scrollHintDismissed = true;
+    scrollHint.classList.add('hidden');
+  }
+});
+
+function resetScrollHint() {
+  scrollHintDismissed = false;
+  scrollHint.classList.remove('hidden');
+  reportCard.scrollTop = 0;
+  setTimeout(updateScrollState, 150);
+}
+
+function updateScrollState() {
+  const needsScroll = reportCard.scrollHeight > reportCard.clientHeight + 10;
+  if (needsScroll && !scrollHintDismissed) {
+    scrollHint.classList.remove('hidden');
+  } else if (!needsScroll) {
+    scrollHint.classList.add('hidden');
+  }
+}
+
+// Tab switching
+document.querySelectorAll('.p5-tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    document.querySelectorAll('.p5-tab').forEach(t => t.classList.remove('active'));
+    tab.classList.add('active');
+    const tabId = tab.dataset.tab;
+    document.querySelectorAll('.p5-tag-group').forEach(g => g.style.display = 'none');
+    document.getElementById('tab-' + tabId).style.display = 'flex';
+    hasEdited = true;
+  });
+});
+
+// Tag toggling
+document.querySelectorAll('.p5-tag').forEach(tag => {
+  tag.addEventListener('click', () => {
+    const group = tag.closest('.p5-tag-group');
+    const allTags = Array.from(group.querySelectorAll('.p5-tag'));
+    const showAllTag = allTags.find(t => t.dataset.role === 'show-all');
+    const isShowAll = tag.dataset.role === 'show-all';
+
+    if (isShowAll) {
+      const willSelect = !tag.classList.contains('selected');
+      allTags.forEach(t => {
+        if (willSelect) t.classList.add('selected');
+        else t.classList.remove('selected');
+      });
+    } else {
+      tag.classList.toggle('selected');
+      // Update "展示全部" state
+      const otherTags = allTags.filter(t => t.dataset.role !== 'show-all');
+      const allSelected = otherTags.every(t => t.classList.contains('selected'));
+      if (allSelected) {
+        showAllTag.classList.add('selected');
+      } else {
+        showAllTag.classList.remove('selected');
+      }
+    }
+
+    hasEdited = true;
+    updateModuleVisibility();
+  });
+});
+
+function updateModuleVisibility() {
+  const dataGroup = document.getElementById('tab-data');
+  const chartGroup = document.getElementById('tab-chart');
+
+  // Data tab: show/hide each subdata item individually
+  const allDataKeys = ['duration', 'cal', 'totalcal', 'avgpace', 'ngp', 'avghr', 'steps', 'ascent', 'descent', 'avgalt', 'avgpower'];
+  allDataKeys.forEach(key => {
+    const item = document.querySelector(`.p5-subdata-item[data-key="${key}"]`);
+    const tag = dataGroup.querySelector(`.p5-tag[data-key="${key}"]`);
+    if (tag && tag.classList.contains('selected')) {
+      item.classList.remove('hidden');
+    } else {
+      item.classList.add('hidden');
+    }
+  });
+
+  // Hide entire subdata section if nothing selected
+  const anyDataSelected = dataGroup.querySelectorAll('.p5-tag.selected[data-key]').length > 0;
+  const subdataSection = document.getElementById('p5-subdata');
+  subdataSection.style.display = anyDataSelected ? '' : 'none';
+
+  // Chart tab: show/hide each chart module individually
+  const chartModules = ['heartrate', 'pace', 'pace-km', 'cadence', 'stride', 'altitude', 'power', 'performance', 'feeling', 'device'];
+  chartModules.forEach(modName => {
+    const mod = document.querySelector(`.p5-module[data-module="${modName}"]`);
+    const tag = chartGroup.querySelector(`.p5-tag[data-target="${modName}"]`);
+    if (tag && tag.classList.contains('selected')) {
+      mod.classList.remove('hidden');
+    } else {
+      mod.classList.add('hidden');
+    }
+  });
+
+  setTimeout(updateScrollState, 100);
+}
+
+// Map style options (single select within each section)
+const mapHeaderImages = {
+  'hide-classic': 'images/map-hide-classic.png',
+  'hide-fire': 'images/map-hide-fire.png',
+  'classic-classic': 'images/map-classic-classic.png',
+  'classic-fire': 'images/map-classic-fire.png',
+  'satellite-classic': 'images/map-satellite-classic.png',
+  'satellite-fire': 'images/map-satellite-fire.png',
+};
+
+function updateMapHeader() {
+  const mapOpt = document.querySelector('.p5-map-opt[data-map].selected');
+  const trackOpt = document.querySelector('.p5-map-opt[data-track].selected');
+  if (!mapOpt || !trackOpt) return;
+  const key = mapOpt.dataset.map + '-' + trackOpt.dataset.track;
+  const headerModule = document.querySelector('.p5-module[data-module="header"]');
+  const img = headerModule.querySelector('img');
+  if (mapHeaderImages[key]) {
+    img.src = mapHeaderImages[key];
+    headerModule.classList.remove('hidden');
+  }
+  setTimeout(updateScrollState, 100);
+}
+
+document.querySelectorAll('.p5-map-options').forEach(optGroup => {
+  optGroup.addEventListener('click', (e) => {
+    const opt = e.target.closest('.p5-map-opt');
+    if (!opt) return;
+    optGroup.querySelectorAll('.p5-map-opt').forEach(o => o.classList.remove('selected'));
+    opt.classList.add('selected');
+    hasEdited = true;
+    updateMapHeader();
+  });
+});
+
+// Initialize: chart modules hidden by default (since chart tab tags are unselected)
+updateModuleVisibility();
+setTimeout(updateScrollState, 200);
+</script>
+
+</body>
+</html>

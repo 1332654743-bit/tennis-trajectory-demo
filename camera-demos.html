@@ -1,0 +1,441 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>运镜方案演示</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: -apple-system, 'PingFang SC', sans-serif; background: #111; color: #fff; min-height: 100vh; padding: 20px; }
+h1 { text-align: center; font-size: 22px; margin-bottom: 8px; }
+.subtitle { text-align: center; font-size: 13px; color: #888; margin-bottom: 24px; }
+.demos { display: flex; flex-direction: column; gap: 20px; max-width: 420px; margin: 0 auto; }
+.demo-card {
+  background: #1e1e1e; border-radius: 14px; overflow: hidden;
+  border: 1px solid #333;
+}
+.demo-header { padding: 14px 16px 8px; }
+.demo-header .name { font-size: 16px; font-weight: 600; margin-bottom: 4px; }
+.demo-header .desc { font-size: 12px; color: #888; line-height: 1.5; }
+.demo-canvas-wrap {
+  position: relative; width: 100%; aspect-ratio: 16/9; background: #0a0a0a;
+}
+.demo-canvas-wrap canvas { width: 100%; height: 100%; display: block; }
+.demo-play {
+  position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%);
+  width: 44px; height: 44px; border-radius: 50%;
+  background: rgba(255,107,0,0.9); border: none; color: #fff;
+  font-size: 16px; cursor: pointer; display: flex; align-items: center; justify-content: center;
+  transition: transform 0.2s, opacity 0.3s;
+}
+.demo-play:active { transform: translate(-50%,-50%) scale(0.9); }
+.demo-play.hidden { opacity: 0; pointer-events: none; }
+.demo-footer { padding: 8px 16px 12px; display: flex; align-items: center; gap: 10px; }
+.demo-progress { flex: 1; height: 3px; background: #333; border-radius: 2px; overflow: hidden; }
+.demo-progress-fill { height: 100%; background: #ff6b00; width: 0%; transition: width 0.05s linear; }
+.demo-tag { font-size: 10px; padding: 3px 8px; border-radius: 10px; background: #333; color: #aaa; }
+</style>
+</head>
+<body>
+<h1>运镜方案演示</h1>
+<p class="subtitle">网球发球 · 手腕轨迹 · 5种经典运镜</p>
+<div class="demos" id="demos"></div>
+
+<script type="importmap">
+{ "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js" } }
+</script>
+<script type="module">
+import * as THREE from 'three';
+
+// 全貌展示视角：侧上方45°，能清晰看到完整轨迹弧线
+const OVERVIEW_POS = (center) => new THREE.Vector3(center.x + 1.2, center.y + 1.6, center.z + 1.8);
+const OVERVIEW_LOOK = (center) => center.clone().add(new THREE.Vector3(0.05, 0.3, 0));
+
+// 运镜融合：前段为特色运镜，最后平滑过渡到全貌视角
+// blendStart: 特色运镜占比（之后开始融合到全貌）
+function blendToOverview(rawCamera, t, center, blendStart) {
+  if (t <= blendStart) return rawCamera;
+  const blend = (t - blendStart) / (1 - blendStart);
+  const ease = blend * blend * (3 - 2 * blend); // smoothstep
+  const overPos = OVERVIEW_POS(center);
+  const overLook = OVERVIEW_LOOK(center);
+  return {
+    pos: new THREE.Vector3().lerpVectors(rawCamera.pos, overPos, ease),
+    look: new THREE.Vector3().lerpVectors(rawCamera.look, overLook, ease)
+  };
+}
+
+const schemes = [
+  {
+    key: 'orbit',
+    name: '方案1：环绕聚焦',
+    desc: '镜头环绕手腕轨迹中心旋转，最终定格全貌展示',
+    tag: '看清楚',
+    camera: (t, center) => {
+      const angle = -Math.PI/2 + t * Math.PI * 1.2;
+      const r = 1.8 - t * 0.3;
+      const y = 1.2 - t * 0.2;
+      const raw = {
+        pos: new THREE.Vector3(center.x + r*Math.cos(angle), center.y + y, center.z + r*Math.sin(angle)),
+        look: center.clone().add(new THREE.Vector3(0, 0.2 * (1-t), 0))
+      };
+      return blendToOverview(raw, t, center, 0.75);
+    }
+  },
+  {
+    key: 'pushin',
+    name: '方案2：跟随推进',
+    desc: '从全景推进至击球特写，再拉回全貌定格',
+    tag: '有冲击',
+    camera: (t, center, hitPoint) => {
+      const startPos = new THREE.Vector3(center.x - 2.5, center.y + 1.5, center.z + 2);
+      const endPos = hitPoint.clone().add(new THREE.Vector3(0.3, 0.15, 0.4));
+      const pushT = Math.min(t / 0.7, 1);
+      const ease = pushT * pushT;
+      const raw = {
+        pos: new THREE.Vector3().lerpVectors(startPos, endPos, ease),
+        look: new THREE.Vector3().lerpVectors(center, hitPoint, ease * 0.8 + 0.2)
+      };
+      return blendToOverview(raw, t, center, 0.7);
+    }
+  },
+  {
+    key: 'bullet',
+    name: '方案3：子弹时间',
+    desc: '击球瞬间减速环绕，之后全貌定格展示',
+    tag: '够酷炫',
+    camera: (t, center, hitPoint) => {
+      let angle, r, y, lookTarget;
+      if (t < 0.35) {
+        angle = -Math.PI * 0.6;
+        r = 2.0;
+        y = 1.0;
+        lookTarget = center.clone();
+      } else if (t < 0.6) {
+        const lt = (t - 0.35) / 0.25;
+        angle = -Math.PI * 0.6 + lt * Math.PI * 1.5;
+        r = 1.5;
+        y = 0.8 + lt * 0.3;
+        lookTarget = hitPoint.clone();
+      } else {
+        const lt = (t - 0.6) / 0.15;
+        angle = -Math.PI * 0.6 + Math.PI * 1.5 + Math.min(lt, 1) * 0.3;
+        r = 1.5 + Math.min(lt, 1) * 0.3;
+        y = 1.1;
+        lookTarget = hitPoint.clone();
+      }
+      const raw = {
+        pos: new THREE.Vector3(center.x + r*Math.cos(angle), center.y + y, center.z + r*Math.sin(angle)),
+        look: lookTarget
+      };
+      return blendToOverview(raw, t, center, 0.75);
+    }
+  },
+  {
+    key: 'autocut',
+    name: '方案4：多机位剪辑',
+    desc: '正面→侧面→俯视多段切换，最终全貌定格',
+    tag: '信息量大',
+    camera: (t, center, hitPoint) => {
+      let raw;
+      if (t < 0.25) {
+        raw = {
+          pos: new THREE.Vector3(center.x + 2, center.y + 0.3, center.z),
+          look: center.clone().add(new THREE.Vector3(0, 0.3, 0))
+        };
+      } else if (t < 0.5) {
+        raw = {
+          pos: new THREE.Vector3(center.x, center.y + 0.5, center.z + 2),
+          look: hitPoint.clone().lerp(center, 0.3)
+        };
+      } else {
+        const lt = (t - 0.5) / 0.25;
+        raw = {
+          pos: new THREE.Vector3(center.x + Math.min(lt,1)*0.3, center.y + 2.5, center.z + 0.3),
+          look: hitPoint.clone()
+        };
+      }
+      return blendToOverview(raw, t, center, 0.75);
+    }
+  },
+  {
+    key: 'shoulder',
+    name: '方案5：肩上第一人称',
+    desc: '肩后沉浸视角，击球后拉远展示轨迹全貌',
+    tag: '代入感强',
+    camera: (t, center, hitPoint, shoulderPos) => {
+      const sway = Math.sin(t * Math.PI * 3) * 0.05;
+      const forward = t * 0.3;
+      const raw = {
+        pos: new THREE.Vector3(
+          shoulderPos.x + sway - forward * 0.2,
+          shoulderPos.y + 0.4 - t * 0.15,
+          shoulderPos.z + sway * 0.5
+        ),
+        look: new THREE.Vector3().lerpVectors(center, hitPoint, Math.min(t/0.7, 1)).add(new THREE.Vector3(0, -0.2, 0))
+      };
+      return blendToOverview(raw, t, center, 0.7);
+    }
+  }
+];
+
+// 生成手腕轨迹（发球挥拍弧线）
+function createWristCurve() {
+  const points = [
+    new THREE.Vector3(-0.3, 0.8, 0.2),   // 准备位
+    new THREE.Vector3(-0.2, 1.5, -0.1),   // 拉拍最高点
+    new THREE.Vector3(0.0, 1.6, -0.3),    // 背弓顶点
+    new THREE.Vector3(0.2, 1.8, -0.1),    // 加速
+    new THREE.Vector3(0.4, 2.0, 0.1),     // 击球点（最高速）
+    new THREE.Vector3(0.5, 1.7, 0.3),     // 随挥
+    new THREE.Vector3(0.3, 1.2, 0.4),     // 收拍
+  ];
+  return new THREE.CatmullRomCurve3(points);
+}
+
+// 创建每个Demo的Three.js场景
+function createDemoScene(canvasEl, schemeIdx) {
+  const renderer = new THREE.WebGLRenderer({ canvas: canvasEl, antialias: true });
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  renderer.setClearColor(0x0d1117);
+
+  const scene = new THREE.Scene();
+  const camera = new THREE.PerspectiveCamera(50, canvasEl.clientWidth/canvasEl.clientHeight, 0.01, 50);
+
+  function resize() {
+    const w = canvasEl.clientWidth, h = canvasEl.clientHeight;
+    renderer.setSize(w, h, false);
+    camera.aspect = w / h;
+    camera.updateProjectionMatrix();
+  }
+  resize();
+
+  scene.add(new THREE.AmbientLight(0xffffff, 0.5));
+  const dl = new THREE.DirectionalLight(0xffffff, 0.8);
+  dl.position.set(2, 3, 2); scene.add(dl);
+
+  // 地面参考网格
+  const grid = new THREE.GridHelper(4, 20, 0x333333, 0x222222);
+  grid.position.y = 0;
+  scene.add(grid);
+
+  // 手腕轨迹曲线
+  const wristCurve = createWristCurve();
+  const curvePoints = wristCurve.getPoints(100);
+  const center = new THREE.Vector3();
+  curvePoints.forEach(p => center.add(p));
+  center.divideScalar(curvePoints.length);
+
+  // 轨迹线（渐变色：绿=慢 → 红=快）
+  const trailGeo = new THREE.BufferGeometry().setFromPoints(curvePoints);
+  const colors = new Float32Array(curvePoints.length * 3);
+  for (let i = 0; i < curvePoints.length; i++) {
+    const t = i / (curvePoints.length - 1);
+    const speed = Math.exp(-((t-0.6)**2) / 0.05);
+    colors[i*3] = 0.2 + speed * 0.8;
+    colors[i*3+1] = 0.8 - speed * 0.6;
+    colors[i*3+2] = 0;
+  }
+  trailGeo.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+  const trail = new THREE.Line(trailGeo, new THREE.LineBasicMaterial({ vertexColors: true, linewidth: 2 }));
+  scene.add(trail);
+
+  // 轨迹管（更粗更可见）
+  const tubeGeo = new THREE.TubeGeometry(wristCurve, 80, 0.015, 8, false);
+  const tubeMat = new THREE.MeshLambertMaterial({ color: 0xff9500, transparent: true, opacity: 0.6 });
+  scene.add(new THREE.Mesh(tubeGeo, tubeMat));
+
+  // 手腕球（动画对象）
+  const wristBall = new THREE.Mesh(
+    new THREE.SphereGeometry(0.04, 16, 16),
+    new THREE.MeshLambertMaterial({ color: 0xff6b00, emissive: 0xff3300, emissiveIntensity: 0.5 })
+  );
+  wristBall.position.copy(curvePoints[0]);
+  scene.add(wristBall);
+
+  // 拍子简化模型
+  const racketGroup = new THREE.Group();
+  const handle = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.012, 0.015, 0.3, 8),
+    new THREE.MeshLambertMaterial({ color: 0x333333 })
+  );
+  handle.position.y = -0.15;
+  racketGroup.add(handle);
+  const frame = new THREE.Mesh(
+    new THREE.TorusGeometry(0.1, 0.008, 8, 24),
+    new THREE.MeshLambertMaterial({ color: 0xcccccc })
+  );
+  frame.position.y = 0.05;
+  frame.rotation.x = Math.PI / 2;
+  racketGroup.add(frame);
+  racketGroup.position.copy(curvePoints[0]);
+  scene.add(racketGroup);
+
+  // 击球点标记
+  const hitIdx = Math.floor(curvePoints.length * 0.6);
+  const hitPoint = curvePoints[hitIdx].clone();
+  const hitMarker = new THREE.Mesh(
+    new THREE.RingGeometry(0.04, 0.07, 24),
+    new THREE.MeshBasicMaterial({ color: 0xff3333, side: THREE.DoubleSide, transparent: true, opacity: 0.8 })
+  );
+  hitMarker.position.copy(hitPoint);
+  hitMarker.lookAt(camera.position);
+  scene.add(hitMarker);
+
+  // 简化人体参考（半透明）
+  const bodyGroup = new THREE.Group();
+  const torso = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.12, 0.15, 0.8, 8),
+    new THREE.MeshLambertMaterial({ color: 0x444444, transparent: true, opacity: 0.3 })
+  );
+  torso.position.y = 0.7;
+  bodyGroup.add(torso);
+  const headM = new THREE.Mesh(
+    new THREE.SphereGeometry(0.1, 16, 16),
+    new THREE.MeshLambertMaterial({ color: 0x555555, transparent: true, opacity: 0.3 })
+  );
+  headM.position.y = 1.2;
+  bodyGroup.add(headM);
+  bodyGroup.position.set(-0.5, 0, 0);
+  scene.add(bodyGroup);
+
+  const shoulderPos = new THREE.Vector3(-0.35, 1.5, -0.1);
+
+  // 初始化camera
+  const scheme = schemes[schemeIdx];
+  const initCam = scheme.camera(0, center, hitPoint, shoulderPos);
+  camera.position.copy(initCam.pos);
+  camera.lookAt(initCam.look);
+
+  renderer.render(scene, camera);
+
+  return {
+    renderer, scene, camera, wristBall, racketGroup, hitMarker,
+    wristCurve, curvePoints, center, hitPoint, shoulderPos, schemeIdx, resize
+  };
+}
+
+// 动画控制
+const demoStates = [];
+
+function buildDemos() {
+  const container = document.getElementById('demos');
+  schemes.forEach((s, idx) => {
+    const card = document.createElement('div');
+    card.className = 'demo-card';
+    card.innerHTML = `
+      <div class="demo-header">
+        <div class="name">${s.name}</div>
+        <div class="desc">${s.desc}</div>
+      </div>
+      <div class="demo-canvas-wrap">
+        <canvas id="canvas-${s.key}"></canvas>
+        <button class="demo-play" id="play-${s.key}">▶</button>
+      </div>
+      <div class="demo-footer">
+        <div class="demo-progress"><div class="demo-progress-fill" id="prog-${s.key}"></div></div>
+        <span class="demo-tag">${s.tag}</span>
+      </div>`;
+    container.appendChild(card);
+  });
+
+  // 等DOM渲染
+  requestAnimationFrame(() => {
+    schemes.forEach((s, idx) => {
+      const canvas = document.getElementById('canvas-' + s.key);
+      const sceneData = createDemoScene(canvas, idx);
+      const state = { ...sceneData, playing: false, progress: 0, key: s.key };
+      demoStates.push(state);
+
+      document.getElementById('play-' + s.key).addEventListener('click', () => {
+        if (state.progress >= 1) state.progress = 0;
+        state.playing = true;
+        state.lastTime = performance.now();
+        document.getElementById('play-' + s.key).classList.add('hidden');
+      });
+    });
+
+    requestAnimationFrame(loop);
+  });
+}
+
+let prevTime = 0;
+function loop(time) {
+  requestAnimationFrame(loop);
+
+  demoStates.forEach(state => {
+
+    const scheme = schemes[state.schemeIdx];
+    // 动画时长：运镜6-8s + 全貌定格停留2.5s
+    const MOVE_DURATION = state.schemeIdx === 2 ? 8000 : 6000;
+    const HOLD_DURATION = 2500;
+    const TOTAL_DURATION = MOVE_DURATION + HOLD_DURATION;
+
+    if (state.playing) {
+      const dt = time - (state.lastTime || time);
+      state.lastTime = time;
+
+      // 子弹时间方案的变速（仅在运镜阶段）
+      let speed = 1;
+      if (state.schemeIdx === 2 && state.progress < (MOVE_DURATION / TOTAL_DURATION)) {
+        const normP = state.progress / (MOVE_DURATION / TOTAL_DURATION);
+        if (normP > 0.35 && normP < 0.6) speed = 0.3;
+        else speed = 1.2;
+      }
+
+      state.progress += (dt / TOTAL_DURATION) * speed;
+
+      if (state.progress >= 1) {
+        state.progress = 1;
+        state.playing = false;
+        document.getElementById('play-' + state.key).classList.remove('hidden');
+        document.getElementById('play-' + state.key).textContent = '↺';
+      }
+    }
+
+    // 运镜阶段占比
+    const moveRatio = MOVE_DURATION / TOTAL_DURATION;
+    // 运镜t：在运镜阶段0→1，定格阶段保持1
+    const camT = Math.min(state.progress / moveRatio, 1);
+    // 轨迹动画t：跟运镜t同步
+    const trailT = camT;
+
+    // 更新轨迹动画
+    const ptIdx = Math.floor(trailT * (state.curvePoints.length - 1));
+    const pt = state.curvePoints[Math.min(ptIdx, state.curvePoints.length - 1)];
+    state.wristBall.position.copy(pt);
+    state.racketGroup.position.copy(pt);
+
+    // 拍子朝向（沿轨迹切线）
+    if (ptIdx < state.curvePoints.length - 1) {
+      const next = state.curvePoints[ptIdx + 1];
+      state.racketGroup.lookAt(next);
+    }
+
+    // 运镜
+    const cam = scheme.camera(camT, state.center, state.hitPoint, state.shoulderPos);
+    state.camera.position.copy(cam.pos);
+    state.camera.lookAt(cam.look);
+
+    // hitMarker闪烁
+    state.hitMarker.material.opacity = 0.4 + 0.4 * Math.sin(time * 0.008);
+    state.hitMarker.lookAt(state.camera.position);
+
+    // 进度条
+    document.getElementById('prog-' + state.key).style.width = (state.progress * 100) + '%';
+
+    state.renderer.render(state.scene, state.camera);
+  });
+
+  prevTime = time;
+}
+
+// 窗口resize
+window.addEventListener('resize', () => {
+  demoStates.forEach(s => s.resize());
+});
+
+buildDemos();
+</script>
+</body>
+</html>
