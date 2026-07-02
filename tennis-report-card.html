@@ -125,6 +125,7 @@ html, body { height: 100%; font-family: -apple-system, BlinkMacSystemFont, 'SF P
           <button class="active" data-marker="ring">光环</button>
           <button data-marker="cross">准星</button>
           <button data-marker="star">星芒</button>
+          <button data-marker="none">无</button>
         </div>
       </div>
       <div class="card-legend">
@@ -631,9 +632,9 @@ function animLoop(time) {
     ribbonMat.uniforms.uProgress.value = fillVal;
   }
 
-  // Hit markers — only show in 'stay' or 'both' mode, hide in 'fly'
+  // Hit markers — show active style when appropriate, 'none' hides all
   {
-    const shouldShow = ballMode !== 'fly' && ((!isPlaying && !isDragging) || animProgress >= BALL_HIT_T);
+    const shouldShow = markerStyle !== 'none' && ((!isPlaying && !isDragging) || animProgress >= BALL_HIT_T);
     const pulse = 0.5 + 0.5 * Math.sin(time * 0.004);
     const s = 0.9 + 0.15 * pulse;
     Object.entries(hitMarkers).forEach(([key, marker]) => {
@@ -787,8 +788,6 @@ document.querySelectorAll('[data-ball]').forEach(btn => {
     document.querySelectorAll('[data-ball]').forEach(b => b.classList.remove('active'));
     btn.classList.add('active');
     ballMode = btn.dataset.ball;
-    // Hide marker toggle when in fly mode (no marker needed)
-    document.getElementById('marker-toggle-row').style.display = ballMode === 'fly' ? 'none' : '';
   });
 });
 
