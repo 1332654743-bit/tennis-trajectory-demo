@@ -121,6 +121,11 @@ html, body { height: 100%; font-family: -apple-system, BlinkMacSystemFont, 'SF P
           <button data-ball="stay">停留</button>
           <button data-ball="fly">飞走</button>
         </div>
+        <div class="toggle-row" id="marker-toggle-row">
+          <button class="active" data-marker="ring">光环</button>
+          <button data-marker="cross">准星</button>
+          <button data-marker="star">星芒</button>
+        </div>
       </div>
       <div class="card-legend">
         <div class="legend-item"><div class="dot dot-green"></div><span>挥拍轨迹</span></div>
@@ -443,12 +448,58 @@ scene.add(ribbonShellMesh);
 // Track current style
 let currentStyle = 'tube'; // 'tube' or 'ribbon'
 
-// Hit point marker
-const hitBallGeo = new THREE.SphereGeometry(0.035, 24, 24);
-const hitBallMat = new THREE.MeshBasicMaterial({ color: 0xccff00, transparent: true, opacity: 0.8 });
-hitMarker = new THREE.Mesh(hitBallGeo, hitBallMat);
-hitMarker.position.copy(hitPoint);
-scene.add(hitMarker);
+// Hit point markers — three styles
+let markerStyle = 'ring'; // 'ring' | 'cross' | 'star'
+const hitMarkers = {};
+
+// A: 光环 (Torus ring)
+const ringGeo = new THREE.TorusGeometry(0.055, 0.008, 12, 32);
+const ringMat = new THREE.MeshBasicMaterial({ color: 0xccff00, transparent: true, opacity: 0.8 });
+hitMarkers.ring = new THREE.Mesh(ringGeo, ringMat);
+hitMarkers.ring.position.copy(hitPoint);
+scene.add(hitMarkers.ring);
+
+// B: 准星 (Crosshair — lines + outer ring)
+const crossGroup = new THREE.Group();
+const crossMat = new THREE.LineBasicMaterial({ color: 0xccff00, transparent: true, opacity: 0.85 });
+const armLen = 0.06;
+const gap = 0.02;
+[
+  [[-armLen, 0, 0], [-gap, 0, 0]], [[gap, 0, 0], [armLen, 0, 0]],
+  [[0, -armLen, 0], [0, -gap, 0]], [[0, gap, 0], [0, armLen, 0]]
+].forEach(([a, b]) => {
+  const g = new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(...a), new THREE.Vector3(...b)]);
+  crossGroup.add(new THREE.Line(g, crossMat));
+});
+const outerRingGeo = new THREE.TorusGeometry(0.05, 0.004, 8, 24);
+const outerRingMat = new THREE.MeshBasicMaterial({ color: 0xccff00, transparent: true, opacity: 0.7 });
+crossGroup.add(new THREE.Mesh(outerRingGeo, outerRingMat));
+crossGroup.position.copy(hitPoint);
+hitMarkers.cross = crossGroup;
+crossGroup.visible = false;
+scene.add(crossGroup);
+
+// C: 星芒 (Starburst — radial lines)
+const starGroup = new THREE.Group();
+const starMat = new THREE.LineBasicMaterial({ color: 0xccff00, transparent: true, opacity: 0.85 });
+const starRays = 6;
+const starInner = 0.015;
+const starOuter = 0.065;
+for (let i = 0; i < starRays; i++) {
+  const angle = (i / starRays) * Math.PI * 2;
+  const cos = Math.cos(angle), sin = Math.sin(angle);
+  const g = new THREE.BufferGeometry().setFromPoints([
+    new THREE.Vector3(cos * starInner, sin * starInner, 0),
+    new THREE.Vector3(cos * starOuter, sin * starOuter, 0)
+  ]);
+  starGroup.add(new THREE.Line(g, starMat));
+}
+starGroup.position.copy(hitPoint);
+hitMarkers.star = starGroup;
+starGroup.visible = false;
+scene.add(starGroup);
+
+hitMarker = hitMarkers.ring;
 
 // Tennis ball (for animation)
 const ballGeo = new THREE.SphereGeometry(0.033, 16, 16);
@@ -580,17 +631,21 @@ function animLoop(time) {
     ribbonMat.uniforms.uProgress.value = fillVal;
   }
 
-  // Hit marker pulse — hide in 'fly' mode (ball flies away, no marker stays)
-  if (hitMarker) {
-    if (ballMode === 'fly') {
-      hitMarker.visible = false;
-    } else {
-      const pulse = 0.5 + 0.5 * Math.sin(time * 0.004);
-      hitMarker.material.opacity = 0.5 + 0.4 * pulse;
-      const s = 0.9 + 0.15 * pulse;
-      hitMarker.scale.set(s, s, s);
-      hitMarker.visible = (!isPlaying && !isDragging) || animProgress >= BALL_HIT_T;
-    }
+  // Hit markers — only show in 'stay' or 'both' mode, hide in 'fly'
+  {
+    const shouldShow = ballMode !== 'fly' && ((!isPlaying && !isDragging) || animProgress >= BALL_HIT_T);
+    const pulse = 0.5 + 0.5 * Math.sin(time * 0.004);
+    const s = 0.9 + 0.15 * pulse;
+    Object.entries(hitMarkers).forEach(([key, marker]) => {
+      if (key === markerStyle && shouldShow) {
+        marker.visible = true;
+        marker.scale.set(s, s, s);
+        if (key === 'star') marker.rotation.z = time * 0.001;
+        if (marker.material) marker.material.opacity = 0.5 + 0.4 * pulse;
+      } else {
+        marker.visible = false;
+      }
+    });
   }
 
   // Tennis ball
@@ -732,6 +787,16 @@ document.querySelectorAll('[data-ball]').forEach(btn => {
     document.querySelectorAll('[data-ball]').forEach(b => b.classList.remove('active'));
     btn.classList.add('active');
     ballMode = btn.dataset.ball;
+    document.getElementById('marker-toggle-row').style.display = ballMode === 'fly' ? 'none' : '';
+  });
+});
+
+// ============ Marker Style Toggle ============
+document.querySelectorAll('[data-marker]').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('[data-marker]').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    markerStyle = btn.dataset.marker;
   });
 });
 </script>
