@@ -8,7 +8,7 @@
 * { margin: 0; padding: 0; box-sizing: border-box; }
 html, body { height: 100%; font-family: -apple-system, BlinkMacSystemFont, 'SF Pro', 'PingFang SC', sans-serif; background: #f5f5f5; }
 
-.page { display: flex; align-items: center; justify-content: center; min-height: 100vh; padding: 20px; }
+.page { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; padding: 20px; }
 
 .report-card {
   width: 100%; max-width: 380px; background: #fff; border-radius: 16px;
@@ -51,9 +51,15 @@ html, body { height: 100%; font-family: -apple-system, BlinkMacSystemFont, 'SF P
 .card-legend .dot-green { background: #4caf50; }
 .card-legend .dot-yellow { background: #ccff00; }
 
-/* Control Panel */
+/* Control Panel (outside card — debug tool) */
 .control-panel {
-  padding: 12px 16px; border-top: 1px solid #f0f0f0;
+  width: 100%; max-width: 380px; margin-top: 16px;
+  background: #fff; border-radius: 12px; padding: 14px 16px;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+}
+.panel-title {
+  font-size: 11px; color: #aaa; font-weight: 600; margin-bottom: 8px;
+  text-transform: uppercase; letter-spacing: 0.5px;
 }
 .panel-row {
   display: flex; align-items: center; padding: 8px 0; gap: 12px;
@@ -118,44 +124,46 @@ html, body { height: 100%; font-family: -apple-system, BlinkMacSystemFont, 'SF P
         <div class="legend-item"><div class="dot dot-yellow"></div><span>击球时刻</span></div>
       </div>
     </div>
-    <!-- Playbar -->
+    <!-- Playbar (inside card, part of final product) -->
     <div class="card-playbar">
       <button class="play-btn" id="play-btn"></button>
       <div class="playbar-progress" id="playbar-progress"><div class="playbar-fill" id="playbar-fill"></div><div class="playbar-thumb" id="playbar-thumb"></div></div>
       <button class="rate-btn" id="rate-btn">1x</button>
       <span class="playbar-time" id="playbar-time">00:00 / 00:04</span>
     </div>
-    <!-- Control Panel -->
-    <div class="control-panel">
-      <div class="panel-row">
-        <span class="panel-label">轨迹样式</span>
-        <div class="panel-btns">
-          <button class="active" data-style="tube">管状</button>
-          <button data-style="ribbon">绸带</button>
-        </div>
+  </div>
+
+  <!-- Control Panel (outside card, debug/design tool) -->
+  <div class="control-panel">
+    <div class="panel-title">调试面板</div>
+    <div class="panel-row">
+      <span class="panel-label">轨迹样式</span>
+      <div class="panel-btns">
+        <button class="active" data-style="tube">管状</button>
+        <button data-style="ribbon">绸带</button>
       </div>
-      <div class="panel-row">
-        <span class="panel-label">球场</span>
-        <div class="panel-btns">
-          <button class="active" id="btn-court-toggle">显示</button>
-        </div>
+    </div>
+    <div class="panel-row">
+      <span class="panel-label">球场</span>
+      <div class="panel-btns">
+        <button class="active" id="btn-court-toggle">显示</button>
       </div>
-      <div class="panel-row">
-        <span class="panel-label">击球后</span>
-        <div class="panel-btns">
-          <button class="active" data-ball="both">停+飞</button>
-          <button data-ball="stay">停留</button>
-          <button data-ball="fly">飞走</button>
-        </div>
+    </div>
+    <div class="panel-row">
+      <span class="panel-label">击球后</span>
+      <div class="panel-btns">
+        <button class="active" data-ball="both">停+飞</button>
+        <button data-ball="stay">停留</button>
+        <button data-ball="fly">飞走</button>
       </div>
-      <div class="panel-row" id="marker-toggle-row">
-        <span class="panel-label">击球标记</span>
-        <div class="panel-btns">
-          <button class="active" data-marker="ring">光环</button>
-          <button data-marker="cross">准星</button>
-          <button data-marker="star">星芒</button>
-          <button data-marker="none">无</button>
-        </div>
+    </div>
+    <div class="panel-row" id="marker-toggle-row">
+      <span class="panel-label">击球标记</span>
+      <div class="panel-btns">
+        <button class="active" data-marker="ring">光环</button>
+        <button data-marker="cross">准星</button>
+        <button data-marker="star">星芒</button>
+        <button data-marker="none">无</button>
       </div>
     </div>
   </div>
