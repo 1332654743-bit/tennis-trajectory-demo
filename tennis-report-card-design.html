@@ -150,7 +150,7 @@ let isPlaying = false;
 let animProgress = 0;
 let isDragging = false;
 let playbackRate = 1; // 倍速
-const ANIM_DURATION = 2500; // 2.5 seconds at 1x (设计要求加快)
+const ANIM_DURATION = 2500; // 4 seconds at 1x
 let lastTime = 0;
 
 // ============ Three.js Init ============
@@ -580,13 +580,17 @@ function animLoop(time) {
     ribbonMat.uniforms.uProgress.value = fillVal;
   }
 
-  // Hit marker pulse
+  // Hit marker pulse — hide in 'fly' mode (ball flies away, no marker stays)
   if (hitMarker) {
-    const pulse = 0.5 + 0.5 * Math.sin(time * 0.004);
-    hitMarker.material.opacity = 0.5 + 0.4 * pulse;
-    const s = 0.9 + 0.15 * pulse;
-    hitMarker.scale.set(s, s, s);
-    hitMarker.visible = (!isPlaying && !isDragging) || animProgress >= BALL_HIT_T;
+    if (ballMode === 'fly') {
+      hitMarker.visible = false;
+    } else {
+      const pulse = 0.5 + 0.5 * Math.sin(time * 0.004);
+      hitMarker.material.opacity = 0.5 + 0.4 * pulse;
+      const s = 0.9 + 0.15 * pulse;
+      hitMarker.scale.set(s, s, s);
+      hitMarker.visible = (!isPlaying && !isDragging) || animProgress >= BALL_HIT_T;
+    }
   }
 
   // Tennis ball
