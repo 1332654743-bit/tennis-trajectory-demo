@@ -150,20 +150,20 @@ html, body { height: 100%; font-family: -apple-system, BlinkMacSystemFont, 'SF P
       </div>
     </div>
     <div class="panel-row">
-      <span class="panel-label">击球后</span>
-      <div class="panel-btns">
-        <button class="active" data-ball="both">停+飞</button>
-        <button data-ball="stay">停留</button>
-        <button data-ball="fly">飞走</button>
-      </div>
-    </div>
-    <div class="panel-row" id="marker-toggle-row">
       <span class="panel-label">击球标记</span>
       <div class="panel-btns">
-        <button class="active" data-marker="ring">光环</button>
+        <button class="active" data-marker="ball">网球</button>
+        <button data-marker="ring">光环</button>
         <button data-marker="cross">准星</button>
         <button data-marker="star">星芒</button>
         <button data-marker="none">无</button>
+      </div>
+    </div>
+    <div class="panel-row">
+      <span class="panel-label">球飞出</span>
+      <div class="panel-btns">
+        <button class="active" data-fly="yes">是</button>
+        <button data-fly="no">否</button>
       </div>
     </div>
   </div>
@@ -475,8 +475,7 @@ scene.add(ribbonShellMesh);
 // Track current style
 let currentStyle = 'tube'; // 'tube' or 'ribbon'
 
-// Hit point markers — three styles
-let markerStyle = 'ring'; // 'ring' | 'cross' | 'star'
+// Hit point markers
 const hitMarkers = {};
 
 // A: 光环 (Torus ring)
@@ -575,7 +574,8 @@ const flyBall = new THREE.Mesh(flyBallGeo, flyBallMat);
 flyBall.visible = false;
 scene.add(flyBall);
 
-let ballMode = 'both'; // 'both' | 'stay' | 'fly'
+let markerStyle = 'ball'; // 'ball' | 'ring' | 'cross' | 'star' | 'none'
+let ballFly = true; // whether ball flies out after hit
 
 function updateTennisBall(progress) {
   if (!isPlaying && !isDragging) {
@@ -589,7 +589,7 @@ function updateTennisBall(progress) {
     return;
   }
 
-  // Before hit: ball falls toward hit point (all modes)
+  // Before hit: ball falls toward hit point (always)
   if (progress < BALL_HIT_T) {
     tennisBall.visible = true;
     flyBall.visible = false;
@@ -600,37 +600,36 @@ function updateTennisBall(progress) {
     return;
   }
 
-  // After hit: behavior depends on mode
-  if (ballMode === 'stay') {
-    // Ball stays at hit point
+  // After hit — marker=ball means ball stays at hit point as the marker
+  const ballStays = markerStyle === 'ball';
+
+  if (ballStays) {
     tennisBall.visible = true;
     tennisBall.position.copy(hitPoint);
     tennisBall.scale.setScalar(1);
-    flyBall.visible = false;
-  } else if (ballMode === 'fly') {
-    // Ball flies away, no stay
-    flyBall.visible = false;
-    if (progress < BALL_FLY_END_T) {
-      tennisBall.visible = true;
-      const t = (progress - BALL_HIT_T) / (BALL_FLY_END_T - BALL_HIT_T);
-      const eased = 1 - Math.pow(1 - t, 5);
-      tennisBall.position.lerpVectors(hitPoint, BALL_FLY_END, eased);
-      tennisBall.scale.setScalar(1 - eased * 0.6);
-    } else {
-      tennisBall.visible = false;
-    }
-  } else {
-    // 'both': one stays, one flies
-    tennisBall.visible = true;
-    tennisBall.position.copy(hitPoint);
-    tennisBall.scale.setScalar(1);
-    if (progress < BALL_FLY_END_T) {
+    if (ballFly && progress < BALL_FLY_END_T) {
       flyBall.visible = true;
       const t = (progress - BALL_HIT_T) / (BALL_FLY_END_T - BALL_HIT_T);
       const eased = 1 - Math.pow(1 - t, 5);
       flyBall.position.lerpVectors(hitPoint, BALL_FLY_END, eased);
       flyBall.scale.setScalar(1 - eased * 0.6);
     } else {
+      flyBall.visible = false;
+    }
+  } else {
+    if (ballFly) {
+      flyBall.visible = false;
+      if (progress < BALL_FLY_END_T) {
+        tennisBall.visible = true;
+        const t = (progress - BALL_HIT_T) / (BALL_FLY_END_T - BALL_HIT_T);
+        const eased = 1 - Math.pow(1 - t, 5);
+        tennisBall.position.lerpVectors(hitPoint, BALL_FLY_END, eased);
+        tennisBall.scale.setScalar(1 - eased * 0.6);
+      } else {
+        tennisBall.visible = false;
+      }
+    } else {
+      tennisBall.visible = false;
       flyBall.visible = false;
     }
   }
@@ -658,13 +657,14 @@ function animLoop(time) {
     ribbonMat.uniforms.uProgress.value = fillVal;
   }
 
-  // Hit markers — show active style when appropriate, 'none' hides all
+  // Hit markers (ring/cross/star) — only when markerStyle is one of them
   {
-    const shouldShow = markerStyle !== 'none' && ((!isPlaying && !isDragging) || animProgress >= BALL_HIT_T);
+    const showGeomMarker = (markerStyle === 'ring' || markerStyle === 'cross' || markerStyle === 'star')
+      && ((!isPlaying && !isDragging) || animProgress >= BALL_HIT_T);
     const pulse = 0.5 + 0.5 * Math.sin(time * 0.004);
     const s = 0.9 + 0.15 * pulse;
     Object.entries(hitMarkers).forEach(([key, marker]) => {
-      if (key === markerStyle && shouldShow) {
+      if (key === markerStyle && showGeomMarker) {
         marker.visible = true;
         marker.scale.set(s, s, s);
         if (key === 'star') marker.rotation.z = time * 0.001;
@@ -808,21 +808,21 @@ document.getElementById('rate-btn').addEventListener('click', () => {
   document.getElementById('rate-btn').textContent = playbackRate === 1 ? '1x' : playbackRate + 'x';
 });
 
-// ============ Ball Mode Toggle ============
-document.querySelectorAll('[data-ball]').forEach(btn => {
-  btn.addEventListener('click', () => {
-    document.querySelectorAll('[data-ball]').forEach(b => b.classList.remove('active'));
-    btn.classList.add('active');
-    ballMode = btn.dataset.ball;
-  });
-});
-
 // ============ Marker Style Toggle ============
 document.querySelectorAll('[data-marker]').forEach(btn => {
   btn.addEventListener('click', () => {
     document.querySelectorAll('[data-marker]').forEach(b => b.classList.remove('active'));
     btn.classList.add('active');
     markerStyle = btn.dataset.marker;
+  });
+});
+
+// ============ Ball Fly Toggle ============
+document.querySelectorAll('[data-fly]').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('[data-fly]').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    ballFly = btn.dataset.fly === 'yes';
   });
 });
 </script>
