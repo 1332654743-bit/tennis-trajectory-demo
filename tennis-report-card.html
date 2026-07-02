@@ -84,6 +84,10 @@ html, body { height: 100%; font-family: -apple-system, BlinkMacSystemFont, 'SF P
   width: 12px; height: 12px; border-radius: 50%; background: #4caf50;
   box-shadow: 0 1px 4px rgba(0,0,0,0.3); pointer-events: none; left: 0%;
 }
+.rate-btn {
+  padding: 3px 8px; border-radius: 10px; background: #eee; border: none;
+  font-size: 11px; color: #555; cursor: pointer; font-weight: 600; flex-shrink: 0;
+}
 </style>
 </head>
 <body>
@@ -122,7 +126,8 @@ html, body { height: 100%; font-family: -apple-system, BlinkMacSystemFont, 'SF P
     <div class="card-playbar">
       <button class="play-btn" id="play-btn"></button>
       <div class="playbar-progress" id="playbar-progress"><div class="playbar-fill" id="playbar-fill"></div><div class="playbar-thumb" id="playbar-thumb"></div></div>
-      <span class="playbar-time" id="playbar-time">00:00 / 00:02</span>
+      <button class="rate-btn" id="rate-btn">1x</button>
+      <span class="playbar-time" id="playbar-time">00:00 / 00:04</span>
     </div>
   </div>
 </div>
@@ -139,7 +144,8 @@ import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 let isPlaying = false;
 let animProgress = 0;
 let isDragging = false;
-const ANIM_DURATION = 4000; // 4 seconds
+let playbackRate = 1; // 倍速
+const ANIM_DURATION = 4000; // 4 seconds at 1x
 let lastTime = 0;
 
 // ============ Three.js Init ============
@@ -506,13 +512,7 @@ function animLoop(time) {
 
   if (isPlaying) {
     const dt = time - lastTime;
-    // Slow motion near hit point
-    let speed = 1;
-    const distToHit = Math.abs(animProgress - BALL_HIT_T);
-    if (distToHit < 0.08) {
-      speed = 0.2 + (distToHit / 0.08) * 0.8; // 20% speed at hit point, ramp back up
-    }
-    animProgress += (dt / ANIM_DURATION) * speed;
+    animProgress += (dt / ANIM_DURATION) * playbackRate;
     if (animProgress >= 1) {
       animProgress = 0;
       fillMat.uniforms.uProgress.value = 0.0;
@@ -612,8 +612,10 @@ function updatePlaybarUI() {
   const pct = animProgress * 100;
   fill.style.width = pct + '%';
   thumb.style.left = pct + '%';
-  const current = Math.round(animProgress * 2);
-  timeEl.textContent = `00:0${current} / 00:02`;
+  const totalSec = Math.round(ANIM_DURATION / 1000 / playbackRate);
+  const curSec = Math.round(animProgress * totalSec);
+  const fmt = (s) => `00:${String(s).padStart(2,'0')}`;
+  timeEl.textContent = `${fmt(curSec)} / ${fmt(totalSec)}`;
   updateSpeedOverlay();
 }
 
@@ -693,6 +695,15 @@ document.querySelectorAll('.toggle-row:first-child button').forEach(btn => {
       ribbonShellMesh.visible = false;
     }
   });
+});
+
+// ============ Playback Rate ============
+const RATES = [0.25, 0.5, 1, 1.5, 2];
+let rateIndex = 2; // default 1x
+document.getElementById('rate-btn').addEventListener('click', () => {
+  rateIndex = (rateIndex + 1) % RATES.length;
+  playbackRate = RATES[rateIndex];
+  document.getElementById('rate-btn').textContent = playbackRate === 1 ? '1x' : playbackRate + 'x';
 });
 </script>
 </body>
