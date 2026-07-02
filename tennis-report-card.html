@@ -514,12 +514,9 @@ function animLoop(time) {
     }
     animProgress += (dt / ANIM_DURATION) * speed;
     if (animProgress >= 1) {
-      animProgress = 1;
-      isPlaying = false;
-      fillMat.uniforms.uProgress.value = 1.0;
-      ribbonMat.uniforms.uProgress.value = 1.0;
-      tennisBall.visible = false;
-      document.getElementById('play-btn').classList.remove('playing');
+      animProgress = 0;
+      fillMat.uniforms.uProgress.value = 0.0;
+      ribbonMat.uniforms.uProgress.value = 0.0;
     }
   }
   lastTime = time;
