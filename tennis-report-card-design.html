@@ -51,19 +51,25 @@ html, body { height: 100%; font-family: -apple-system, BlinkMacSystemFont, 'SF P
 .card-legend .dot-green { background: #4caf50; }
 .card-legend .dot-yellow { background: #ccff00; }
 
-/* Style toggle */
-.style-toggle {
-  position: absolute; top: 14px; right: 12px; z-index: 3;
-  display: flex; gap: 6px; flex-direction: column; align-items: flex-end;
+/* Control Panel */
+.control-panel {
+  padding: 12px 16px; border-top: 1px solid #f0f0f0;
 }
-.toggle-row {
-  display: flex; background: rgba(0,0,0,0.5); border-radius: 14px; overflow: hidden;
+.panel-row {
+  display: flex; align-items: center; padding: 8px 0; gap: 12px;
 }
-.toggle-row button {
-  padding: 5px 12px; font-size: 11px; border: none; cursor: pointer;
-  color: rgba(255,255,255,0.6); background: transparent; transition: all 0.2s;
+.panel-row:not(:last-child) { border-bottom: 1px solid #f5f5f5; }
+.panel-label {
+  font-size: 12px; color: #888; width: 56px; flex-shrink: 0;
 }
-.toggle-row button.active { background: rgba(255,255,255,0.2); color: #fff; }
+.panel-btns {
+  display: flex; gap: 6px; flex-wrap: wrap;
+}
+.panel-btns button {
+  padding: 5px 12px; font-size: 11px; border: 1px solid #e0e0e0; cursor: pointer;
+  color: #666; background: #fafafa; border-radius: 14px; transition: all 0.2s;
+}
+.panel-btns button.active { background: #222; color: #fff; border-color: #222; }
 
 /* Playbar */
 .card-playbar {
@@ -107,27 +113,6 @@ html, body { height: 100%; font-family: -apple-system, BlinkMacSystemFont, 'SF P
         <span class="value" id="speed-value">91</span><span class="unit">km/h</span>
         <div class="label">挥拍速度</div>
       </div>
-      <!-- Toggles -->
-      <div class="style-toggle">
-        <div class="toggle-row">
-          <button class="active" data-style="tube">管状</button>
-          <button data-style="ribbon">绸带</button>
-        </div>
-        <div class="toggle-row">
-          <button class="active" id="btn-court-toggle">球场</button>
-        </div>
-        <div class="toggle-row">
-          <button class="active" data-ball="both">停+飞</button>
-          <button data-ball="stay">停留</button>
-          <button data-ball="fly">飞走</button>
-        </div>
-        <div class="toggle-row" id="marker-toggle-row">
-          <button class="active" data-marker="ring">光环</button>
-          <button data-marker="cross">准星</button>
-          <button data-marker="star">星芒</button>
-          <button data-marker="none">无</button>
-        </div>
-      </div>
       <div class="card-legend">
         <div class="legend-item"><div class="dot dot-green"></div><span>挥拍轨迹</span></div>
         <div class="legend-item"><div class="dot dot-yellow"></div><span>击球时刻</span></div>
@@ -139,6 +124,39 @@ html, body { height: 100%; font-family: -apple-system, BlinkMacSystemFont, 'SF P
       <div class="playbar-progress" id="playbar-progress"><div class="playbar-fill" id="playbar-fill"></div><div class="playbar-thumb" id="playbar-thumb"></div></div>
       <button class="rate-btn" id="rate-btn">1x</button>
       <span class="playbar-time" id="playbar-time">00:00 / 00:04</span>
+    </div>
+    <!-- Control Panel -->
+    <div class="control-panel">
+      <div class="panel-row">
+        <span class="panel-label">轨迹样式</span>
+        <div class="panel-btns">
+          <button class="active" data-style="tube">管状</button>
+          <button data-style="ribbon">绸带</button>
+        </div>
+      </div>
+      <div class="panel-row">
+        <span class="panel-label">球场</span>
+        <div class="panel-btns">
+          <button class="active" id="btn-court-toggle">显示</button>
+        </div>
+      </div>
+      <div class="panel-row">
+        <span class="panel-label">击球后</span>
+        <div class="panel-btns">
+          <button class="active" data-ball="both">停+飞</button>
+          <button data-ball="stay">停留</button>
+          <button data-ball="fly">飞走</button>
+        </div>
+      </div>
+      <div class="panel-row" id="marker-toggle-row">
+        <span class="panel-label">击球标记</span>
+        <div class="panel-btns">
+          <button class="active" data-marker="ring">光环</button>
+          <button data-marker="cross">准星</button>
+          <button data-marker="star">星芒</button>
+          <button data-marker="none">无</button>
+        </div>
+      </div>
     </div>
   </div>
 </div>
@@ -754,9 +772,9 @@ document.getElementById('btn-court-toggle').addEventListener('click', (e) => {
 });
 
 // ============ Style Toggle ============
-document.querySelectorAll('.toggle-row:first-child button').forEach(btn => {
+document.querySelectorAll('[data-style]').forEach(btn => {
   btn.addEventListener('click', () => {
-    document.querySelectorAll('.toggle-row:first-child button').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('[data-style]').forEach(b => b.classList.remove('active'));
     btn.classList.add('active');
     currentStyle = btn.dataset.style;
     if (currentStyle === 'ribbon') {
