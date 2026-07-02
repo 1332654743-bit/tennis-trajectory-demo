@@ -521,17 +521,9 @@ function animLoop(time) {
   }
   lastTime = time;
 
-  // Update trajectory fill (playing or dragging)
+  // Update trajectory fill (playing or dragging) — linear, no pause
   if (isPlaying || isDragging) {
-    let fillVal;
-    if (animProgress < BALL_HIT_T) {
-      fillVal = hitParamT * (animProgress / BALL_HIT_T);
-    } else if (animProgress < BALL_HIT_T + 0.05) {
-      fillVal = hitParamT;
-    } else {
-      const remaining = (animProgress - BALL_HIT_T - 0.05) / (1.0 - BALL_HIT_T - 0.05);
-      fillVal = hitParamT + (1.0 - hitParamT) * Math.min(remaining, 1.0);
-    }
+    const fillVal = animProgress;
     fillMat.uniforms.uProgress.value = fillVal;
     ribbonMat.uniforms.uProgress.value = fillVal;
   }
@@ -561,31 +553,12 @@ requestAnimationFrame(animLoop);
 const PEAK_SPEED = 189;
 const MIN_SPEED = 35;
 function getSpeedAtProgress(progress) {
-  // Map animProgress to curve t
-  let tOnCurve;
-  if (progress < BALL_HIT_T) {
-    tOnCurve = hitParamT * (progress / BALL_HIT_T);
-  } else if (progress < BALL_HIT_T + 0.05) {
-    tOnCurve = hitParamT;
-  } else {
-    const remaining = (progress - BALL_HIT_T - 0.05) / (1.0 - BALL_HIT_T - 0.05);
-    tOnCurve = hitParamT + (1.0 - hitParamT) * Math.min(remaining, 1.0);
-  }
-  const peak = Math.exp(-Math.pow(tOnCurve - 0.57, 2) / 0.03);
+  const peak = Math.exp(-Math.pow(progress - 0.57, 2) / 0.03);
   return Math.round(MIN_SPEED + (PEAK_SPEED - MIN_SPEED) * peak);
 }
 
 function getSpeedColor(progress) {
-  let tOnCurve;
-  if (progress < BALL_HIT_T) {
-    tOnCurve = hitParamT * (progress / BALL_HIT_T);
-  } else if (progress < BALL_HIT_T + 0.05) {
-    tOnCurve = hitParamT;
-  } else {
-    const remaining = (progress - BALL_HIT_T - 0.05) / (1.0 - BALL_HIT_T - 0.05);
-    tOnCurve = hitParamT + (1.0 - hitParamT) * Math.min(remaining, 1.0);
-  }
-  const speedNorm = Math.exp(-Math.pow(tOnCurve - 0.57, 2) / 0.08);
+  const speedNorm = Math.exp(-Math.pow(progress - 0.57, 2) / 0.08);
   let r, g, b;
   if (speedNorm < 0.5) {
     const s = speedNorm / 0.5;
@@ -642,17 +615,8 @@ function seekTo(clientX) {
   let ratio = (clientX - rect.left) / rect.width;
   ratio = Math.max(0, Math.min(1, ratio));
   animProgress = ratio;
-  let fillVal;
-  if (animProgress < BALL_HIT_T) {
-    fillVal = hitParamT * (animProgress / BALL_HIT_T);
-  } else if (animProgress < BALL_HIT_T + 0.05) {
-    fillVal = hitParamT;
-  } else {
-    const remaining = (animProgress - BALL_HIT_T - 0.05) / (1.0 - BALL_HIT_T - 0.05);
-    fillVal = hitParamT + (1.0 - hitParamT) * Math.min(remaining, 1.0);
-  }
-  fillMat.uniforms.uProgress.value = fillVal;
-  ribbonMat.uniforms.uProgress.value = fillVal;
+  fillMat.uniforms.uProgress.value = animProgress;
+  ribbonMat.uniforms.uProgress.value = animProgress;
   updatePlaybarUI();
 }
 
