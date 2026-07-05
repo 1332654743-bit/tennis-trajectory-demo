@@ -118,9 +118,13 @@ const COLORS = ['#4caf50', '#2196f3', '#ff9800', '#9c27b0', '#f44336', '#00bcd4'
 
 let allData = [];
 
+const GOOGLE_SCRIPT_URL = 'PASTE_YOUR_GOOGLE_SCRIPT_URL_HERE';
+
 async function loadData() {
   try {
-    const resp = await fetch('/api/results');
+    // Try Google Apps Script first (for GitHub Pages), fallback to local server
+    const url = GOOGLE_SCRIPT_URL.startsWith('http') ? GOOGLE_SCRIPT_URL : '/api/results';
+    const resp = await fetch(url);
     allData = await resp.json();
     render();
   } catch (e) {

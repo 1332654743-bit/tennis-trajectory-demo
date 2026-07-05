@@ -1496,17 +1496,16 @@ function saveData() {
   localStorage.setItem('tennis-survey-results', JSON.stringify(stored));
   // 清理 Part1 临时数据
   localStorage.removeItem('tennis-survey-part1-answers');
-  // POST to server (works on local server; silently succeeds on static hosting)
-  const API_BASE = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
-    ? '' : (window.SURVEY_API_BASE || '');
-  const submitUrl = API_BASE + '/api/submit';
-  fetch(submitUrl, {
+  // POST to Google Apps Script (free cloud backend)
+  const GOOGLE_SCRIPT_URL = 'PASTE_YOUR_GOOGLE_SCRIPT_URL_HERE';
+  const postTarget = GOOGLE_SCRIPT_URL.startsWith('http') ? GOOGLE_SCRIPT_URL : '/api/submit';
+  fetch(postTarget, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'text/plain' },
     body: JSON.stringify(record)
-  }).then(r => r.json()).then(() => {
+  }).then(() => {
     const tip = document.getElementById('sync-tip');
-    if (tip) { tip.textContent = '✓ 已自动同步到服务器'; tip.style.color = '#4caf50'; }
+    if (tip) { tip.textContent = '✓ 已同步'; tip.style.color = '#4caf50'; }
   }).catch(() => {
     const tip = document.getElementById('sync-tip');
     if (tip) { tip.textContent = '✓ 提交完成'; tip.style.color = '#4caf50'; }
