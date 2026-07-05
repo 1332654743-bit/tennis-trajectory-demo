@@ -455,8 +455,8 @@ const ribbonMat = new THREE.ShaderMaterial({
         color = vec3(1.0, 0.9 - s * 0.7, 0.0);
       }
       float light = 0.5 + 0.5 * abs(dot(vNormal, vec3(0.3, 0.8, 0.5)));
-      // 宽度方向渐变：内侧(aEdge=0)完全透明，外侧(aEdge=1)完全不透明
-      float alpha = vEdge;
+      // 宽度方向渐变：内侧透明区域更大，外侧才不透明
+      float alpha = smoothstep(0.0, 0.7, vEdge);
       gl_FragColor = vec4(color * light, alpha);
     }
   `,
@@ -481,7 +481,7 @@ const ribbonShellMat = new THREE.ShaderMaterial({
   fragmentShader: `
     varying float vEdge;
     void main() {
-      float alpha = vEdge * 0.2;
+      float alpha = smoothstep(0.0, 0.7, vEdge) * 0.2;
       gl_FragColor = vec4(0.53, 0.53, 0.53, alpha);
     }
   `,
