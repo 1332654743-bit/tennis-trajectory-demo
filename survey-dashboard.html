@@ -1,0 +1,425 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>发球轨迹调研 - 分析看板</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f5f5f5; color: #333; padding: 24px; }
+.header { max-width: 900px; margin: 0 auto 24px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; }
+.header h1 { font-size: 22px; font-weight: 600; }
+.header-stats { font-size: 14px; color: #666; }
+.header-actions { display: flex; gap: 8px; }
+.header-actions button { padding: 6px 14px; border: 1px solid #ddd; border-radius: 6px; background: #fff; cursor: pointer; font-size: 13px; }
+.header-actions button:hover { background: #f0f0f0; }
+.card { max-width: 900px; margin: 0 auto 20px; background: #fff; border-radius: 12px; padding: 24px; box-shadow: 0 1px 4px rgba(0,0,0,0.06); }
+.card-title { font-size: 16px; font-weight: 600; margin-bottom: 4px; }
+.card-desc { font-size: 13px; color: #888; margin-bottom: 16px; }
+.bar-row { display: flex; align-items: center; margin-bottom: 10px; gap: 10px; }
+.bar-label { width: 100px; font-size: 13px; text-align: right; flex-shrink: 0; }
+.bar-track { flex: 1; height: 28px; background: #f0f0f0; border-radius: 6px; overflow: hidden; position: relative; }
+.bar-fill { height: 100%; border-radius: 6px; transition: width 0.4s ease; display: flex; align-items: center; padding-left: 8px; }
+.bar-fill span { font-size: 12px; color: #fff; font-weight: 500; white-space: nowrap; }
+.bar-count { width: 60px; font-size: 12px; color: #666; flex-shrink: 0; }
+.winner { position: relative; }
+.winner .bar-label { font-weight: 600; }
+.winner .bar-fill { box-shadow: 0 0 0 2px rgba(76, 175, 80, 0.3); }
+.badge { display: inline-block; background: #4caf50; color: #fff; font-size: 10px; padding: 1px 6px; border-radius: 10px; margin-left: 6px; }
+.comments-section { margin-top: 16px; border-top: 1px solid #f0f0f0; padding-top: 12px; }
+.comments-title { font-size: 13px; font-weight: 500; color: #666; margin-bottom: 8px; }
+.comments-list { max-height: 150px; overflow-y: auto; }
+.comment-item { font-size: 12px; color: #555; padding: 4px 0; border-bottom: 1px solid #f8f8f8; }
+.comment-item:last-child { border-bottom: none; }
+.summary-card { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: #fff; }
+.summary-card .card-title { color: #fff; }
+.summary-card .card-desc { color: rgba(255,255,255,0.8); }
+.summary-row { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid rgba(255,255,255,0.15); }
+.summary-row:last-child { border-bottom: none; }
+.summary-q { font-size: 13px; opacity: 0.9; }
+.summary-a { font-size: 14px; font-weight: 600; }
+.empty-state { text-align: center; padding: 60px 20px; color: #999; }
+.empty-state h2 { font-size: 18px; margin-bottom: 8px; color: #666; }
+.auto-refresh { font-size: 11px; color: #aaa; }
+.followup-section { margin-top: 12px; padding: 12px; background: #f9f9f9; border-radius: 8px; }
+.followup-title { font-size: 13px; font-weight: 500; color: #666; margin-bottom: 8px; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div>
+    <h1>🎾 发球轨迹卡片 — 调研分析看板</h1>
+    <div class="header-stats" id="stats">加载中...</div>
+  </div>
+  <div class="header-actions">
+    <button onclick="loadData()">🔄 刷新</button>
+    <button onclick="exportCSV()">📊 导出 CSV</button>
+    <button onclick="exportJSON()">📋 导出 JSON</button>
+    <button onclick="clearData()" style="color:#f44336;border-color:#f44336;">🗑 清空数据</button>
+    <span class="auto-refresh" id="auto-refresh-label">每 10 秒自动刷新</span>
+  </div>
+</div>
+
+<div id="content">
+  <div class="empty-state">
+    <h2>暂无数据</h2>
+    <p>等待用户完成问卷提交...</p>
+  </div>
+</div>
+
+<script>
+// ============ Part1: 发球轨迹卡片 ============
+const PART1_QUESTIONS = [
+  { id: 'court', title: '第 1 题：球场背景', desc: '是否保留非真实位置的球场背景' },
+  { id: 'style', title: '第 2 题：动作轨迹效果', desc: '三种轨迹展示方式的偏好' },
+  { id: 'ballfly', title: '第 3 题：击球后球飞出', desc: '模拟球飞出效果的保留意愿' },
+  { id: 'marker', title: '第 4 题：击中提示', desc: '击球点标记样式偏好' },
+  { id: 'speed', title: '第 5 题：动画播放速度', desc: '用户觉得最舒适的播放速度' },
+  { id: 'model', title: '第 6 题：人物模型感受', desc: '模型观感与改善方向' },
+];
+
+const PART1_LABELS = {
+  court: { show: '显示球场', hide: '隐藏球场', whatever: '无所谓' },
+  style: { current: '线条', tube: '管道', ribbon: '飘带' },
+  ballfly: { yes: '球飞出', no: '不飞出', whatever: '无所谓' },
+  marker: { ball: '网球', ring: '光圈', cross: '十字', star: '放射' },
+  speed: { '0.25': '0.25x 极慢', '0.5': '0.5x 慢速', '1': '1x 正常', '1.5': '1.5x 较快', '2': '2x 快速' },
+  model: { fine: '没问题', uncomfortable: '有点不适', whatever: '无所谓' },
+};
+
+// ============ Part2: 发球轨迹分享 ============
+const PART2_QUESTIONS = [
+  { id: 'camera', title: '第 1 题：运镜选择', desc: '五种镜头运动方式的偏好' },
+  { id: 'data', title: '第 2 题：数据展示', desc: '视频结束后展示哪些运动数据', isMulti: true },
+  { id: 'chart', title: '第 3 题：图表展示', desc: '视频右侧叠加图表的偏好' },
+  { id: 'share', title: '第 4 题：分享意愿', desc: '生成轨迹视频后的分享意愿' },
+];
+
+const PART2_LABELS = {
+  camera: { orbit: '环绕聚焦', pushin: '跟随推进', bullet: '子弹时间', autocut: '多机位剪辑', shoulder: '肩上视角' },
+  data: { max_serve: '最大发球速度', max_hit: '最大击球速度', max_rally: '最长连拍', avg_hr: '平均心率', max_speed: '最大拍速', avg_speed: '平均拍速' },
+  chart: { radar: '训练表现图', heartrate: '心率曲线', speed_bar: '速度柱状图', hands: '正反手分布', stroke: '击球姿势分布' },
+  share: { very: '非常想分享', maybe: '看情况', unlikely: '大概率不会', never: '完全不会' },
+};
+
+const PART2_FOLLOWUP_LABELS = {
+  moments: '微信朋友圈', wechat: '微信群聊/私聊', social: '小红书/抖音',
+  community: '网球社区', save: '只保存不分享'
+};
+
+const FOLLOWUP_LABELS = {
+  clothes: '加运动服纹理', silhouette: '纯色剪影',
+  transparent: '降低不透明度', nochange: '不需要改',
+  ...PART2_FOLLOWUP_LABELS
+};
+
+const COLORS = ['#4caf50', '#2196f3', '#ff9800', '#9c27b0', '#f44336', '#00bcd4'];
+
+let allData = [];
+
+async function loadData() {
+  try {
+    const resp = await fetch('/api/results');
+    allData = await resp.json();
+    render();
+  } catch (e) {
+    console.error('加载失败:', e);
+  }
+}
+
+function render() {
+  const container = document.getElementById('content');
+  const stats = document.getElementById('stats');
+
+  if (allData.length === 0) {
+    container.innerHTML = `<div class="empty-state"><h2>暂无数据</h2><p>等待用户完成问卷提交...</p></div>`;
+    stats.textContent = '暂无提交';
+    return;
+  }
+
+  // combined 数据需要拆分成 Part1 和 Part2 两份虚拟记录
+  const part1Data = [];
+  const part2Data = [];
+
+  allData.forEach(r => {
+    if (r.part === 'trajectory-card') {
+      part1Data.push(r);
+    } else if (r.part === 'trajectory-video') {
+      part2Data.push(r);
+    } else if (r.part === 'combined') {
+      // combined 同时算入两边
+      part1Data.push(r);
+      part2Data.push(r);
+    }
+  });
+
+  const latest = allData[allData.length - 1];
+  const latestTime = latest.timestamp ? new Date(latest.timestamp).toLocaleString('zh-CN') : '未知';
+  stats.textContent = `共 ${allData.length} 份提交 (含 Part1 数据 ${part1Data.length} 份, Part2 数据 ${part2Data.length} 份) | 最近: ${latestTime}`;
+
+  let html = '';
+
+  // Part1 section
+  if (part1Data.length > 0) {
+    html += renderPartSection('Part 1：发球轨迹卡片', part1Data, PART1_QUESTIONS, PART1_LABELS);
+  }
+
+  // Part2 section
+  if (part2Data.length > 0) {
+    html += renderPartSection('Part 2：发球轨迹分享', part2Data, PART2_QUESTIONS, PART2_LABELS);
+  }
+
+  container.innerHTML = html;
+}
+
+function renderPartSection(title, data, questions, optionLabels) {
+  let html = `<div class="card" style="background:#f8f9fa;padding:12px 24px;"><div class="card-title" style="font-size:18px;margin:0;">📋 ${title} <span style="font-size:13px;color:#888;font-weight:400;">(${data.length} 人)</span></div></div>`;
+
+  questions.forEach((q, qi) => {
+    const labels = optionLabels[q.id];
+    const counts = {};
+    const comments = [];
+    const followupCounts = {};
+
+    Object.keys(labels).forEach(k => counts[k] = 0);
+
+    data.forEach(record => {
+      const ans = record.answers?.[q.id];
+      if (!ans) return;
+      if (q.isMulti) {
+        // Multi-select: choice is array
+        const choices = ans.choice || [];
+        (Array.isArray(choices) ? choices : [choices]).forEach(c => {
+          if (counts[c] !== undefined) counts[c]++;
+        });
+      } else {
+        if (ans.choice && counts[ans.choice] !== undefined) counts[ans.choice]++;
+      }
+      if (ans.comment && ans.comment.trim()) comments.push(ans.comment.trim());
+      if (ans.followup) {
+        ans.followup.forEach(f => { followupCounts[f] = (followupCounts[f] || 0) + 1; });
+      }
+    });
+
+    const total = q.isMulti ? (data.length || 1) : (Object.values(counts).reduce((a, b) => a + b, 0) || 1);
+    const maxKey = Object.entries(counts).sort((a, b) => b[1] - a[1])[0]?.[0];
+
+    html += `<div class="card">`;
+    html += `<div class="card-title">${q.title}</div>`;
+    html += `<div class="card-desc">${q.desc}${q.isMulti ? '（多选，每人最多3项）' : ''}</div>`;
+
+    Object.entries(counts).forEach(([key, count], i) => {
+      const pct = Math.round(count / total * 100);
+      const isWinner = key === maxKey && count > 0;
+      html += `<div class="bar-row ${isWinner ? 'winner' : ''}">`;
+      html += `<div class="bar-label">${labels[key]}${isWinner ? '<span class="badge">推荐</span>' : ''}</div>`;
+      html += `<div class="bar-track"><div class="bar-fill" style="width:${pct}%;background:${COLORS[i % COLORS.length]}"><span>${pct}%</span></div></div>`;
+      html += `<div class="bar-count">${count} 人</div>`;
+      html += `</div>`;
+    });
+
+    // Followup
+    if (Object.keys(followupCounts).length > 0) {
+      const followupTitle = q.id === 'model' ? '改善方式偏好（选择"有点不适"的用户）' : '分享渠道偏好（可多选）';
+      const followupBase = q.id === 'model' ? (counts.uncomfortable || 1) : (data.length || 1);
+      html += `<div class="followup-section"><div class="followup-title">${followupTitle}</div>`;
+      Object.entries(followupCounts).sort((a, b) => b[1] - a[1]).forEach(([key, count]) => {
+        const label = FOLLOWUP_LABELS[key] || key;
+        const pct = Math.round(count / followupBase * 100);
+        html += `<div class="bar-row"><div class="bar-label">${label}</div>`;
+        html += `<div class="bar-track"><div class="bar-fill" style="width:${pct}%;background:#9c27b0"><span>${pct}%</span></div></div>`;
+        html += `<div class="bar-count">${count} 人</div></div>`;
+      });
+      html += `</div>`;
+    }
+
+    if (comments.length > 0) {
+      html += `<div class="comments-section"><div class="comments-title">💬 用户意见 (${comments.length} 条)</div>`;
+      html += `<div class="comments-list">`;
+      comments.forEach(c => { html += `<div class="comment-item">"${c}"</div>`; });
+      html += `</div></div>`;
+    }
+
+    html += `</div>`;
+  });
+
+  // Summary for this part
+  html += `<div class="card summary-card">`;
+  html += `<div class="card-title">📊 推荐方案（各题票数最高）</div>`;
+  html += `<div class="card-desc">基于 ${data.length} 位用户的选择</div>`;
+  questions.forEach(q => {
+    const labels = optionLabels[q.id];
+    const counts = {};
+    Object.keys(labels).forEach(k => counts[k] = 0);
+    data.forEach(record => {
+      const ans = record.answers?.[q.id];
+      if (!ans) return;
+      if (q.isMulti) {
+        const choices = ans.choice || [];
+        (Array.isArray(choices) ? choices : [choices]).forEach(c => { if (counts[c] !== undefined) counts[c]++; });
+      } else {
+        if (ans.choice && counts[ans.choice] !== undefined) counts[ans.choice]++;
+      }
+    });
+    const total = q.isMulti ? (data.length || 1) : (Object.values(counts).reduce((a, b) => a + b, 0) || 1);
+    const best = Object.entries(counts).sort((a, b) => b[1] - a[1])[0];
+    if (best) {
+      const pct = Math.round(best[1] / total * 100);
+      html += `<div class="summary-row"><span class="summary-q">${q.title}</span><span class="summary-a">${labels[best[0]]} (${pct}%, ${best[1]}人)</span></div>`;
+    }
+  });
+  html += `</div>`;
+
+  // 组合排行
+  html += renderCombinationRanking(data, questions, optionLabels);
+
+  return html;
+}
+
+function renderCombinationRanking(data, questions, optionLabels) {
+  // 统计每种完整组合出现的次数
+  const comboCounts = {};
+  data.forEach(record => {
+    const parts = [];
+    questions.forEach(q => {
+      const ans = record.answers?.[q.id];
+      if (!ans) { parts.push('未选'); return; }
+      if (q.isMulti) {
+        const choices = ans.choice || ans.choices || [];
+        const arr = Array.isArray(choices) ? choices : [choices];
+        parts.push(arr.map(c => optionLabels[q.id]?.[c] || c).sort().join('+') || '未选');
+      } else {
+        parts.push(optionLabels[q.id]?.[ans.choice] || ans.choice || '未选');
+      }
+    });
+    const key = parts.join(' | ');
+    comboCounts[key] = (comboCounts[key] || 0) + 1;
+  });
+
+  // 按次数排序，取前5
+  const sorted = Object.entries(comboCounts).sort((a, b) => b[1] - a[1]).slice(0, 5);
+  if (sorted.length === 0) return '';
+
+  let html = `<div class="card">`;
+  html += `<div class="card-title">🏆 用户选择组合排行</div>`;
+  html += `<div class="card-desc">每位用户的完整选择组合，按相同组合人数排序（前5）</div>`;
+  html += `<div style="margin-top:12px;">`;
+
+  sorted.forEach(([combo, count], idx) => {
+    const pct = Math.round(count / data.length * 100);
+    const medal = idx === 0 ? '🥇' : (idx === 1 ? '🥈' : (idx === 2 ? '🥉' : ''));
+    const items = combo.split(' | ');
+    html += `<div style="margin-bottom:14px;padding:10px 12px;background:${idx===0?'#f0faf0':'#fafafa'};border-radius:8px;${idx===0?'border:1.5px solid #4caf50;':''}">`;
+    html += `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">`;
+    html += `<span style="font-size:13px;font-weight:600;color:#333;">${medal} 组合 ${idx+1}</span>`;
+    html += `<span style="font-size:12px;color:#666;font-weight:500;">${count} 人 (${pct}%)</span>`;
+    html += `</div>`;
+    html += `<div style="display:flex;flex-wrap:wrap;gap:4px;">`;
+    items.forEach((item, i) => {
+      const qTitle = questions[i] ? questions[i].title.replace(/第 \d+ 题：/, '') : '';
+      html += `<span style="font-size:11px;background:#fff;border:1px solid #e0e0e0;border-radius:4px;padding:2px 6px;color:#555;" title="${qTitle}">${item}</span>`;
+    });
+    html += `</div></div>`;
+  });
+
+  html += `</div></div>`;
+  return html;
+}
+
+function exportJSON() {
+  const blob = new Blob([JSON.stringify(allData, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = `survey-results-${allData.length}人.json`; a.click();
+  URL.revokeObjectURL(url);
+}
+
+function exportCSV() {
+  if (allData.length === 0) return;
+  const headers = ['部分', '提交时间', '球场背景', '动作轨迹', '球飞出', '击中提示', '播放速度', '人物模型', '模型改善', '运镜选择', '数据展示', '图表展示', '分享意愿', '分享渠道', '意见汇总'];
+  const rows = allData.map(record => {
+    const a = record.answers || {};
+    const allComments = Object.values(a).map(v => v?.comment).filter(Boolean).join(' | ');
+    return [
+      record.part === 'combined' ? '合并' : (record.part === 'trajectory-card' ? 'Part1' : 'Part2'),
+      record.timestamp || '',
+      PART1_LABELS.court[a.court?.choice] || '',
+      PART1_LABELS.style[a.style?.choice] || '',
+      PART1_LABELS.ballfly[a.ballfly?.choice] || '',
+      PART1_LABELS.marker[a.marker?.choice] || '',
+      PART1_LABELS.speed?.[a.speed?.choice] || '',
+      PART1_LABELS.model[a.model?.choice] || '',
+      (a.model?.followup || []).map(f => FOLLOWUP_LABELS[f] || f).join('+') || '',
+      PART2_LABELS.camera?.[a.camera?.choice] || '',
+      (Array.isArray(a.data?.choice) ? a.data.choice : []).map(k => PART2_LABELS.data?.[k] || k).join('+') || '',
+      PART2_LABELS.chart?.[a.chart?.choice] || '',
+      PART2_LABELS.share?.[a.share?.choice] || '',
+      (a.share?.followup || []).map(f => FOLLOWUP_LABELS[f] || f).join('+') || '',
+      allComments,
+    ];
+  });
+  const csv = [headers, ...rows].map(r => r.map(c => `"${(c+'').replace(/"/g, '""')}"`).join(',')).join('\n');
+  const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = `survey-results-${allData.length}人.csv`; a.click();
+  URL.revokeObjectURL(url);
+}
+
+let lastClearBatch = null;
+
+async function clearData() {
+  if (!confirm(`确定清空全部 ${allData.length} 条数据吗？\n（数据会移入回收站，可随时恢复）`)) return;
+  try {
+    const resp = await fetch('/api/clear', { method: 'POST' });
+    const result = await resp.json();
+    if (result.ok) {
+      lastClearBatch = result.batch;
+      allData = [];
+      render();
+      showRestoreBar(result.deleted);
+    }
+  } catch (e) {
+    alert('清空失败: ' + e.message);
+  }
+}
+
+async function restoreData() {
+  try {
+    const resp = await fetch('/api/restore', { method: 'POST' });
+    const result = await resp.json();
+    if (result.ok) {
+      hideRestoreBar();
+      loadData();
+    } else {
+      alert(result.msg || '恢复失败');
+    }
+  } catch (e) {
+    alert('恢复失败: ' + e.message);
+  }
+}
+
+function showRestoreBar(count) {
+  let bar = document.getElementById('restore-bar');
+  if (!bar) {
+    bar = document.createElement('div');
+    bar.id = 'restore-bar';
+    bar.style.cssText = 'max-width:900px;margin:0 auto 16px;padding:12px 16px;background:#fff3e0;border-radius:8px;display:flex;align-items:center;justify-content:space-between;font-size:13px;';
+    document.getElementById('content').insertAdjacentElement('beforebegin', bar);
+  }
+  bar.innerHTML = `<span>已清空 ${count} 条数据（已移入回收站）</span><button onclick="restoreData()" style="padding:4px 12px;background:#ff9800;color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:13px;">撤销恢复</button>`;
+  bar.style.display = 'flex';
+}
+
+function hideRestoreBar() {
+  const bar = document.getElementById('restore-bar');
+  if (bar) bar.style.display = 'none';
+}
+
+// 初始加载 + 自动刷新
+loadData();
+setInterval(loadData, 10000);
+</script>
+</body>
+</html>

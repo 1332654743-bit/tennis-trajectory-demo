@@ -1,0 +1,1111 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>发球轨迹卡片 · 用户调研</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html, body { height: 100%; font-family: -apple-system, BlinkMacSystemFont, 'SF Pro', 'PingFang SC', sans-serif; background: #f5f5f5; }
+
+.page { display: flex; flex-direction: column; align-items: center; min-height: 100vh; padding: 20px 20px 40px; }
+
+.report-card {
+  width: 100%; max-width: 380px; background: #fff; border-radius: 16px;
+  box-shadow: 0 4px 24px rgba(0,0,0,0.1); overflow: hidden;
+}
+
+/* Header */
+.card-header {
+  display: flex; align-items: center; padding: 16px 16px 12px; gap: 10px;
+}
+.card-header .icon {
+  width: 32px; height: 32px; border-radius: 50%; background: #e8f5e9;
+  display: flex; align-items: center; justify-content: center; font-size: 16px; flex-shrink: 0;
+}
+.card-header .title { font-size: 16px; font-weight: 600; color: #222; flex: 1; }
+
+/* Speed overlay inside 3D */
+.speed-overlay {
+  position: absolute; top: 14px; left: 14px; pointer-events: none; z-index: 2;
+}
+.speed-overlay .value { font-size: 36px; font-weight: 800; color: #4caf50; line-height: 1; }
+.speed-overlay .unit { font-size: 12px; color: rgba(255,255,255,0.7); font-weight: 600; margin-left: 2px; }
+.speed-overlay .label { font-size: 11px; color: rgba(255,255,255,0.5); margin-top: 2px; }
+
+/* 3D Area */
+.card-3d-wrap {
+  position: relative; width: 100%; height: 280px; background: #0a1e2e; overflow: hidden;
+}
+#three-canvas { width: 100%; height: 100%; display: block; }
+
+.card-legend {
+  position: absolute; bottom: 10px; right: 12px;
+  display: flex; flex-direction: column; gap: 4px;
+}
+.card-legend .legend-item {
+  display: flex; align-items: center; gap: 5px; font-size: 11px; color: rgba(255,255,255,0.7);
+}
+.card-legend .dot { width: 8px; height: 8px; border-radius: 50%; }
+.card-legend .dot-green { background: #4caf50; }
+.card-legend .dot-yellow { background: #ccff00; }
+
+/* Playbar */
+.card-playbar {
+  display: flex; align-items: center; padding: 12px 16px; gap: 12px; background: #fafafa;
+}
+.play-btn {
+  width: 32px; height: 32px; border-radius: 50%; background: #222;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; border: none; flex-shrink: 0;
+}
+.play-btn::after { content: '\25B6'; color: #fff; font-size: 11px; margin-left: 2px; }
+.play-btn.playing::after { content: '\23F8'; margin-left: 0; }
+.playbar-time { font-size: 12px; color: #999; margin-left: auto; }
+.playbar-progress { flex: 1; height: 4px; background: #e0e0e0; border-radius: 2px; position: relative; cursor: pointer; touch-action: none; }
+.playbar-fill { position: absolute; left: 0; top: 0; height: 100%; background: #4caf50; border-radius: 2px; width: 0%; pointer-events: none; }
+.playbar-thumb {
+  position: absolute; top: 50%; transform: translate(-50%, -50%);
+  width: 12px; height: 12px; border-radius: 50%; background: #4caf50;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.3); pointer-events: none; left: 0%;
+}
+.rate-btn {
+  padding: 3px 8px; border-radius: 10px; background: #eee; border: none;
+  font-size: 11px; color: #555; cursor: pointer; font-weight: 600; flex-shrink: 0;
+}
+
+/* ========== Survey Panel ========== */
+.survey-panel {
+  width: 100%; max-width: 380px; margin-top: 16px;
+  background: #fff; border-radius: 12px; padding: 20px;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+}
+.survey-progress {
+  display: flex; align-items: center; gap: 8px; margin-bottom: 16px;
+}
+.survey-progress .step-dots {
+  display: flex; gap: 4px; flex: 1;
+}
+.survey-progress .step-dot {
+  width: 100%; height: 3px; border-radius: 2px; background: #e0e0e0; transition: background 0.3s;
+}
+.survey-progress .step-dot.done { background: #4caf50; }
+.survey-progress .step-dot.current { background: #222; }
+.survey-progress .step-label { font-size: 11px; color: #999; white-space: nowrap; }
+
+.survey-title { font-size: 15px; font-weight: 600; color: #222; margin-bottom: 6px; }
+.survey-desc { font-size: 13px; color: #666; line-height: 1.6; margin-bottom: 16px; }
+.survey-image { text-align: center; margin-bottom: 16px; }
+.survey-image img { max-width: 200px; max-height: 300px; border-radius: 8px; border: 1px solid #eee; }
+.survey-image-note { font-size: 11px; color: #999; margin-top: 6px; }
+
+/* Operation buttons within survey */
+.survey-btns {
+  display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 16px;
+}
+.survey-btns button {
+  padding: 8px 16px; font-size: 13px; border: 1.5px solid #e0e0e0; cursor: pointer;
+  color: #555; background: #fafafa; border-radius: 20px; transition: all 0.2s;
+}
+.survey-btns button.active { background: #222; color: #fff; border-color: #222; }
+.survey-btns button:disabled { opacity: 0.3; pointer-events: none; }
+
+/* Question area */
+.survey-question { font-size: 14px; font-weight: 500; color: #333; margin-bottom: 10px; }
+.survey-options { display: flex; flex-direction: column; gap: 8px; margin-bottom: 14px; }
+.survey-option {
+  display: flex; align-items: center; gap: 10px; padding: 10px 14px;
+  border: 1.5px solid #e8e8e8; border-radius: 10px; cursor: pointer; transition: all 0.2s;
+}
+.survey-option.selected { border-color: #4caf50; background: #f0faf0; }
+.survey-option .radio {
+  width: 18px; height: 18px; border-radius: 50%; border: 2px solid #ccc;
+  display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+}
+.survey-option.selected .radio { border-color: #4caf50; }
+.survey-option.selected .radio::after { content: ''; width: 10px; height: 10px; border-radius: 50%; background: #4caf50; }
+.survey-option .opt-text { font-size: 13px; color: #333; }
+
+/* Multi-select checkbox */
+.survey-option .checkbox {
+  width: 18px; height: 18px; border-radius: 4px; border: 2px solid #ccc;
+  display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+}
+.survey-option.selected .checkbox { border-color: #4caf50; background: #4caf50; }
+.survey-option.selected .checkbox::after { content: '\2713'; color: #fff; font-size: 12px; font-weight: 700; }
+
+.survey-textarea {
+  width: 100%; min-height: 60px; border: 1.5px solid #e8e8e8; border-radius: 10px;
+  padding: 10px 12px; font-size: 13px; resize: vertical; outline: none;
+  font-family: inherit; color: #333; margin-bottom: 14px;
+}
+.survey-textarea:focus { border-color: #4caf50; }
+.survey-textarea::placeholder { color: #bbb; }
+
+.survey-nav {
+  display: flex; gap: 10px; justify-content: flex-end;
+}
+.btn-next, .btn-prev, .btn-submit {
+  padding: 10px 24px; border-radius: 20px; font-size: 14px; font-weight: 500;
+  cursor: pointer; border: none; transition: all 0.2s;
+}
+.btn-next { background: #222; color: #fff; }
+.btn-next:hover { background: #444; }
+.btn-prev { background: #f0f0f0; color: #555; }
+.btn-prev:hover { background: #e0e0e0; }
+.btn-submit { background: #4caf50; color: #fff; }
+.btn-submit:hover { background: #43a047; }
+
+/* Summary page */
+.summary-section { margin-bottom: 16px; padding-bottom: 14px; border-bottom: 1px solid #f0f0f0; }
+.summary-section:last-child { border-bottom: none; }
+.summary-label { font-size: 12px; color: #999; margin-bottom: 4px; }
+.summary-value { font-size: 14px; color: #222; font-weight: 500; }
+.summary-comment { font-size: 13px; color: #666; margin-top: 4px; font-style: italic; }
+.summary-edit-btn {
+  font-size: 12px; color: #4caf50; background: none; border: none; cursor: pointer;
+  margin-top: 4px; padding: 0;
+}
+
+/* Export area */
+.export-area { margin-top: 16px; text-align: center; }
+.btn-export {
+  padding: 10px 28px; border-radius: 20px; font-size: 14px;
+  background: #ff6b00; color: #fff; border: none; cursor: pointer; font-weight: 500;
+}
+.btn-copy {
+  padding: 10px 28px; border-radius: 20px; font-size: 14px;
+  background: #eee; color: #555; border: none; cursor: pointer; font-weight: 500; margin-left: 10px;
+}
+
+/* Free play intro */
+.intro-overlay {
+  position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  background: rgba(0,0,0,0.5); z-index: 10; border-radius: 0;
+}
+.intro-overlay.hidden { display: none; }
+.intro-text { color: #fff; font-size: 14px; text-align: center; padding: 12px; line-height: 1.6; }
+.btn-start-survey {
+  margin-top: 12px; padding: 10px 28px; border-radius: 20px;
+  background: #4caf50; color: #fff; border: none; font-size: 14px; cursor: pointer; font-weight: 500;
+}
+
+/* Free play panel */
+.freeplay-panel {
+  width: 100%; max-width: 380px; margin-top: 16px;
+  background: #fff; border-radius: 12px; padding: 14px 16px;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+}
+.freeplay-panel .panel-title {
+  font-size: 13px; color: #666; font-weight: 600; margin-bottom: 10px;
+}
+.freeplay-panel .panel-row {
+  display: flex; align-items: center; padding: 8px 0; gap: 12px;
+}
+.freeplay-panel .panel-row:not(:last-child) { border-bottom: 1px solid #f5f5f5; }
+.freeplay-panel .panel-label { font-size: 12px; color: #888; width: 56px; flex-shrink: 0; }
+.freeplay-panel .panel-btns { display: flex; gap: 6px; flex-wrap: wrap; }
+.freeplay-panel .panel-btns button {
+  padding: 5px 12px; font-size: 11px; border: 1px solid #e0e0e0; cursor: pointer;
+  color: #666; background: #fafafa; border-radius: 14px; transition: all 0.2s;
+}
+.freeplay-panel .panel-btns button.active { background: #222; color: #fff; border-color: #222; }
+
+.freeplay-start {
+  width: 100%; max-width: 380px; margin-top: 12px; text-align: center;
+}
+
+/* Shake animation */
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  20% { transform: translateX(-4px); }
+  40% { transform: translateX(4px); }
+  60% { transform: translateX(-3px); }
+  80% { transform: translateX(3px); }
+}
+
+/* Hide elements */
+.hidden { display: none !important; }
+</style>
+</head>
+<body>
+<div class="page">
+  <div class="report-card">
+    <div class="card-header">
+      <div class="icon">🎾</div>
+      <span class="title">发球动作轨迹</span>
+    </div>
+    <div class="card-3d-wrap">
+      <canvas id="three-canvas"></canvas>
+      <div class="speed-overlay" id="speed-overlay">
+        <span class="value" id="speed-value">91</span><span class="unit">km/h</span>
+        <div class="label">挥拍速度</div>
+      </div>
+      <div class="card-legend">
+        <div class="legend-item"><div class="dot dot-green"></div><span>挥拍轨迹</span></div>
+        <div class="legend-item"><div class="dot dot-yellow"></div><span>击球时刻</span></div>
+      </div>
+    </div>
+    <div class="card-playbar">
+      <button class="play-btn" id="play-btn"></button>
+      <div class="playbar-progress" id="playbar-progress"><div class="playbar-fill" id="playbar-fill"></div><div class="playbar-thumb" id="playbar-thumb"></div></div>
+      <button class="rate-btn" id="rate-btn">1x</button>
+      <span class="playbar-time" id="playbar-time">00:00 / 00:02</span>
+    </div>
+  </div>
+
+  <!-- Free Play Panel (visible initially) -->
+  <div class="freeplay-panel" id="freeplay-panel">
+    <div class="panel-title">请先自由体验 Demo（可旋转、播放、切换各效果）</div>
+    <div class="panel-row">
+      <span class="panel-label">球场背景</span>
+      <div class="panel-btns">
+        <button class="active" id="btn-court-toggle">显示</button>
+        <button id="btn-court-hide">隐藏</button>
+      </div>
+    </div>
+    <div class="panel-row">
+      <span class="panel-label">动作轨迹效果</span>
+      <div class="panel-btns">
+        <button data-style="current">线条</button>
+        <button class="active" data-style="tube">管道</button>
+        <button data-style="ribbon">飘带</button>
+      </div>
+    </div>
+    <div class="panel-row">
+      <span class="panel-label">击球后球飞出</span>
+      <div class="panel-btns">
+        <button class="active" data-fly="yes">开启</button>
+        <button data-fly="no">关闭</button>
+      </div>
+    </div>
+    <div class="panel-row">
+      <span class="panel-label">击中提示</span>
+      <div class="panel-btns">
+        <button data-marker="ball">网球</button>
+        <button class="active" data-marker="ring">光圈</button>
+        <button data-marker="cross">十字</button>
+        <button data-marker="star">放射</button>
+        <button data-marker="none">无</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="freeplay-start" id="freeplay-start">
+    <button class="btn-next" id="btn-begin-survey" style="width:100%;padding:14px;font-size:15px;">体验完毕，开始答题</button>
+  </div>
+
+  <!-- Survey Panel (hidden initially) -->
+  <div class="survey-panel hidden" id="survey-panel"></div>
+</div>
+
+<script type="importmap">
+{ "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js", "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/" } }
+</script>
+<script type="module">
+import * as THREE from 'three';
+import { OBJLoader } from 'three/addons/loaders/OBJLoader.js';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+// ============ 3D Scene (same as design demo) ============
+let isPlaying = false;
+let animProgress = 0;
+let isDragging = false;
+let playbackRate = 1;
+const ANIM_DURATION = 2500;
+let lastTime = 0;
+
+let renderer, scene, camera, controls;
+let wristCurve, sceneCenter, hitPoint;
+
+const canvas = document.getElementById('three-canvas');
+renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+renderer.setPixelRatio(window.devicePixelRatio);
+renderer.setClearColor(0x0a1e2e);
+
+scene = new THREE.Scene();
+camera = new THREE.PerspectiveCamera(55, canvas.clientWidth / canvas.clientHeight, 0.01, 50);
+
+function resize() {
+  const w = canvas.clientWidth, h = canvas.clientHeight;
+  renderer.setSize(w, h, false);
+  camera.aspect = w / h;
+  camera.updateProjectionMatrix();
+}
+resize();
+window.addEventListener('resize', resize);
+
+scene.add(new THREE.AmbientLight(0xffffff, 0.7));
+const dl = new THREE.DirectionalLight(0xffffff, 0.9);
+dl.position.set(2, 4, 2);
+scene.add(dl);
+
+// Court
+const courtGroup = new THREE.Group();
+scene.add(courtGroup);
+
+function buildCourt() {
+  const S = 0.33;
+  const halfLen = 11.89 * S, singleW = 8.23 * S / 2, doubleW = 10.97 * S / 2;
+  const serviceLen = 6.4 * S, netH = 0.914 * S;
+  const baselineZ = 0.6, netZ = baselineZ + halfLen, serviceZ = netZ - serviceLen;
+
+  const courtGeo = new THREE.PlaneGeometry(doubleW * 2 + 1, halfLen + 2);
+  const courtMat = new THREE.MeshLambertMaterial({ color: 0x0f2e3d });
+  const court = new THREE.Mesh(courtGeo, courtMat);
+  court.rotation.x = -Math.PI / 2;
+  court.position.set(0, -0.01, baselineZ + halfLen / 2);
+  courtGroup.add(court);
+
+  const outerGeo = new THREE.PlaneGeometry(doubleW * 2 + 4, halfLen + 8);
+  const outerMat = new THREE.MeshLambertMaterial({ color: 0x091a24 });
+  const outer = new THREE.Mesh(outerGeo, outerMat);
+  outer.rotation.x = -Math.PI / 2;
+  outer.position.set(0, -0.02, baselineZ + halfLen / 2 - 2);
+  courtGroup.add(outer);
+
+  const lineMat = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.3 });
+  function addLine(x1, z1, x2, z2) {
+    const dx = x2 - x1, dz = z2 - z1, len = Math.sqrt(dx*dx + dz*dz);
+    const geo = new THREE.PlaneGeometry(0.02, len);
+    const mesh = new THREE.Mesh(geo, lineMat);
+    mesh.rotation.x = -Math.PI / 2;
+    mesh.rotation.z = -Math.atan2(dx, dz);
+    mesh.position.set((x1+x2)/2, 0.001, (z1+z2)/2);
+    courtGroup.add(mesh);
+  }
+  addLine(-doubleW, baselineZ, doubleW, baselineZ);
+  addLine(-doubleW, baselineZ, -doubleW, netZ);
+  addLine(doubleW, baselineZ, doubleW, netZ);
+  addLine(-singleW, baselineZ, -singleW, netZ);
+  addLine(singleW, baselineZ, singleW, netZ);
+  addLine(-singleW, serviceZ, singleW, serviceZ);
+  addLine(0, serviceZ, 0, netZ);
+
+  const netGeo = new THREE.PlaneGeometry(doubleW * 2 + 0.3, netH);
+  const netMat = new THREE.MeshBasicMaterial({ color: 0x888888, transparent: true, opacity: 0.15, side: THREE.DoubleSide });
+  const netMesh = new THREE.Mesh(netGeo, netMat);
+  netMesh.position.set(0, netH / 2, netZ);
+  courtGroup.add(netMesh);
+
+  const topLineGeo = new THREE.PlaneGeometry(doubleW * 2 + 0.3, 0.015);
+  const topLineMat = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.4 });
+  const topLineMesh = new THREE.Mesh(topLineGeo, topLineMat);
+  topLineMesh.position.set(0, netH, netZ);
+  courtGroup.add(topLineMesh);
+}
+buildCourt();
+
+// Trajectory
+const points = [
+  new THREE.Vector3(-0.25, 0.0, -0.2), new THREE.Vector3(-0.15, 0.54, -0.3),
+  new THREE.Vector3(0.0, 1.14, -0.15), new THREE.Vector3(0.15, 1.49, 0.05),
+  new THREE.Vector3(0.05, 1.64, 0.15), new THREE.Vector3(0.35, 1.14, 0.35),
+  new THREE.Vector3(0.55, 0.44, 0.5),
+];
+wristCurve = new THREE.CatmullRomCurve3(points);
+const curvePoints = wristCurve.getPoints(100);
+sceneCenter = new THREE.Vector3();
+curvePoints.forEach(p => sceneCenter.add(p));
+sceneCenter.divideScalar(curvePoints.length);
+
+const hitTarget = new THREE.Vector3(0.05, 1.64, 0.15);
+let hitParamT = 0.57;
+let minDist = Infinity;
+for (let i = 0; i <= 500; i++) {
+  const t = i / 500;
+  const d = wristCurve.getPointAt(t).distanceTo(hitTarget);
+  if (d < minDist) { minDist = d; hitParamT = t; }
+}
+hitPoint = wristCurve.getPointAt(hitParamT);
+
+// Shell
+const shellGeo = new THREE.TubeGeometry(wristCurve, 80, 0.025, 12, false);
+const shellMat = new THREE.MeshLambertMaterial({ color: 0x888888, transparent: true, opacity: 0.2, depthWrite: false });
+const shellMesh = new THREE.Mesh(shellGeo, shellMat);
+scene.add(shellMesh);
+
+// Fill tube
+const fillGeo = new THREE.TubeGeometry(wristCurve, 80, 0.022, 12, false);
+const segCount = 80, radialCount = 12, vertsPerRing = radialCount + 1;
+const tValues = new Float32Array(fillGeo.attributes.position.count);
+for (let seg = 0; seg <= segCount; seg++) {
+  const t = seg / segCount;
+  for (let v = 0; v < vertsPerRing; v++) tValues[seg * vertsPerRing + v] = t;
+}
+fillGeo.setAttribute('aT', new THREE.Float32BufferAttribute(tValues, 1));
+
+const fillMat = new THREE.ShaderMaterial({
+  uniforms: { uProgress: { value: 1.0 } },
+  vertexShader: `attribute float aT; varying float vT; void main(){vT=aT;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0);}`,
+  fragmentShader: `uniform float uProgress;varying float vT;void main(){if(vT>uProgress)discard;float speed=exp(-pow(vT-0.57,2.0)/0.08);vec3 color;if(speed<0.5){float s=speed/0.5;color=vec3(s,0.75+s*0.15,0.2*(1.0-s));}else{float s=(speed-0.5)/0.5;color=vec3(1.0,0.9-s*0.7,0.0);}gl_FragColor=vec4(color,0.95);}`,
+  transparent: true, side: THREE.DoubleSide, depthTest: true, depthWrite: true
+});
+const fillMesh = new THREE.Mesh(fillGeo, fillMat);
+fillMesh.renderOrder = 1;
+scene.add(fillMesh);
+
+// Ribbon
+function buildRibbonGeometry(curve, segments, halfWidth) {
+  const positions = [], tAttrs = [], edgeAttrs = [], indices = [];
+  for (let i = 0; i <= segments; i++) {
+    const t = i / segments;
+    const point = curve.getPointAt(t);
+    const tangent = curve.getTangentAt(t).normalize();
+    const twistAngle = Math.PI * 0.3 * Math.sin(t * Math.PI * 1.5) + t * Math.PI * 0.8;
+    let up = new THREE.Vector3(0, 1, 0);
+    if (Math.abs(tangent.dot(up)) > 0.99) up = new THREE.Vector3(1, 0, 0);
+    const binormal = new THREE.Vector3().crossVectors(tangent, up).normalize();
+    const normal = new THREE.Vector3().crossVectors(binormal, tangent).normalize();
+    const cos = Math.cos(twistAngle), sin = Math.sin(twistAngle);
+    const ribbonDir = new THREE.Vector3(binormal.x*cos+normal.x*sin, binormal.y*cos+normal.y*sin, binormal.z*cos+normal.z*sin).normalize();
+    const w = halfWidth * (0.6 + 0.4 * Math.exp(-Math.pow(t - 0.57, 2) / 0.1));
+    positions.push(point.x-ribbonDir.x*w, point.y-ribbonDir.y*w, point.z-ribbonDir.z*w, point.x+ribbonDir.x*w, point.y+ribbonDir.y*w, point.z+ribbonDir.z*w);
+    tAttrs.push(t, t); edgeAttrs.push(0.0, 1.0);
+    if (i < segments) { const base = i*2; indices.push(base,base+1,base+2,base+1,base+3,base+2); }
+  }
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+  geo.setAttribute('aT', new THREE.Float32BufferAttribute(tAttrs, 1));
+  geo.setAttribute('aEdge', new THREE.Float32BufferAttribute(edgeAttrs, 1));
+  geo.setIndex(indices); geo.computeVertexNormals();
+  return geo;
+}
+
+const ribbonGeo = buildRibbonGeometry(wristCurve, 120, 0.06);
+const ribbonMat = new THREE.ShaderMaterial({
+  uniforms: { uProgress: { value: 1.0 } },
+  vertexShader: `attribute float aT;attribute float aEdge;varying float vT;varying float vEdge;varying vec3 vNormal;void main(){vT=aT;vEdge=aEdge;vNormal=normalize(normalMatrix*normal);gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0);}`,
+  fragmentShader: `uniform float uProgress;varying float vT;varying float vEdge;varying vec3 vNormal;void main(){if(vT>uProgress)discard;float speed=exp(-pow(vT-0.57,2.0)/0.08);vec3 color;if(speed<0.5){float s=speed/0.5;color=vec3(s,0.75+s*0.15,0.2*(1.0-s));}else{float s=(speed-0.5)/0.5;color=vec3(1.0,0.9-s*0.7,0.0);}float light=0.5+0.5*abs(dot(vNormal,vec3(0.3,0.8,0.5)));float alpha=smoothstep(0.0,0.7,vEdge);gl_FragColor=vec4(color*light,alpha);}`,
+  transparent: true, side: THREE.DoubleSide, depthTest: true, depthWrite: false
+});
+const ribbonMesh = new THREE.Mesh(ribbonGeo, ribbonMat);
+ribbonMesh.renderOrder = 1; ribbonMesh.visible = false;
+scene.add(ribbonMesh);
+
+const ribbonShellGeo = buildRibbonGeometry(wristCurve, 120, 0.065);
+const ribbonShellMat = new THREE.ShaderMaterial({
+  vertexShader: `attribute float aEdge;varying float vEdge;void main(){vEdge=aEdge;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0);}`,
+  fragmentShader: `varying float vEdge;void main(){float alpha=smoothstep(0.0,0.7,vEdge)*0.2;gl_FragColor=vec4(0.53,0.53,0.53,alpha);}`,
+  transparent: true, side: THREE.DoubleSide, depthWrite: false
+});
+const ribbonShellMesh = new THREE.Mesh(ribbonShellGeo, ribbonShellMat);
+ribbonShellMesh.visible = false;
+scene.add(ribbonShellMesh);
+
+let currentStyle = 'tube';
+
+// Hit markers
+const hitMarkers = {};
+const ringGeo = new THREE.TorusGeometry(0.055, 0.008, 12, 32);
+const ringMat = new THREE.MeshBasicMaterial({ color: 0xccff00, transparent: true, opacity: 0.8 });
+hitMarkers.ring = new THREE.Mesh(ringGeo, ringMat);
+hitMarkers.ring.position.copy(hitPoint);
+scene.add(hitMarkers.ring);
+
+const crossGroup = new THREE.Group();
+const crossMat = new THREE.LineBasicMaterial({ color: 0xccff00, transparent: true, opacity: 0.85 });
+const armLen = 0.06, gap = 0.02;
+[[[-armLen,0,0],[-gap,0,0]],[[gap,0,0],[armLen,0,0]],[[0,-armLen,0],[0,-gap,0]],[[0,gap,0],[0,armLen,0]]].forEach(([a,b]) => {
+  const g = new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(...a), new THREE.Vector3(...b)]);
+  crossGroup.add(new THREE.Line(g, crossMat));
+});
+crossGroup.add(new THREE.Mesh(new THREE.TorusGeometry(0.05, 0.004, 8, 24), new THREE.MeshBasicMaterial({ color: 0xccff00, transparent: true, opacity: 0.7 })));
+crossGroup.position.copy(hitPoint);
+hitMarkers.cross = crossGroup; crossGroup.visible = false;
+scene.add(crossGroup);
+
+const starGroup = new THREE.Group();
+const starMat2 = new THREE.LineBasicMaterial({ color: 0xccff00, transparent: true, opacity: 0.85 });
+for (let i = 0; i < 6; i++) {
+  const angle = (i/6)*Math.PI*2, cos=Math.cos(angle), sin=Math.sin(angle);
+  const g = new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(cos*0.015,sin*0.015,0), new THREE.Vector3(cos*0.065,sin*0.065,0)]);
+  starGroup.add(new THREE.Line(g, starMat2));
+}
+starGroup.position.copy(hitPoint);
+hitMarkers.star = starGroup; starGroup.visible = false;
+scene.add(starGroup);
+
+// Tennis ball
+const ballGeo = new THREE.SphereGeometry(0.033, 16, 16);
+const ballMat = new THREE.MeshPhongMaterial({ color: 0xccff00, shininess: 60 });
+const tennisBall = new THREE.Mesh(ballGeo, ballMat);
+tennisBall.visible = false;
+scene.add(tennisBall);
+
+const flyBall = new THREE.Mesh(new THREE.SphereGeometry(0.033, 16, 16), new THREE.MeshPhongMaterial({ color: 0xccff00, shininess: 60 }));
+flyBall.visible = false;
+scene.add(flyBall);
+
+// Human model
+const loader = new OBJLoader();
+loader.load('models/trophy-pose-low.obj', (obj) => {
+  const mat = new THREE.MeshPhongMaterial({ color: 0x9a9a9a, transparent: true, opacity: 0.85, shininess: 40 });
+  obj.traverse((child) => { if (child.isMesh) child.material = mat; });
+  obj.position.set(0.030, 0.000, 0.220);
+  obj.scale.set(0.680, 0.680, 0.680);
+  obj.rotation.set(0.010, 0.000, 0.020);
+  scene.add(obj);
+});
+
+// Controls
+controls = new OrbitControls(camera, canvas);
+controls.target.copy(sceneCenter);
+controls.enableDamping = true; controls.dampingFactor = 0.08;
+controls.enableZoom = true; controls.minDistance = 1.0; controls.maxDistance = 5.0;
+controls.maxPolarAngle = Math.PI / 2; controls.minPolarAngle = 0.1;
+camera.position.set(sceneCenter.x + 0.8, sceneCenter.y + 0.8, sceneCenter.z + 2.5);
+controls.update();
+
+// State
+let markerStyle = 'ring';
+let ballFly = true;
+const BALL_HIT_T = 0.57, BALL_FLY_END_T = 0.95;
+const BALL_TOSS_START = new THREE.Vector3(0.05, 2.8, 0.1);
+const BALL_FLY_END = new THREE.Vector3(0.3, 0.6, 5.5);
+
+function updateTennisBall(progress) {
+  if (!isPlaying && !isDragging) { tennisBall.visible = false; flyBall.visible = false; return; }
+  if (progress < 0.01) { tennisBall.visible = false; flyBall.visible = false; return; }
+  if (progress < BALL_HIT_T) {
+    tennisBall.visible = true; flyBall.visible = false;
+    const t = progress / BALL_HIT_T;
+    tennisBall.position.lerpVectors(BALL_TOSS_START, hitPoint, t*t);
+    tennisBall.scale.setScalar(1); return;
+  }
+  const ballStays = markerStyle === 'ball';
+  if (ballStays) {
+    tennisBall.visible = true; tennisBall.position.copy(hitPoint); tennisBall.scale.setScalar(1);
+    if (ballFly && progress < BALL_FLY_END_T) {
+      flyBall.visible = true;
+      const t = (progress - BALL_HIT_T) / (BALL_FLY_END_T - BALL_HIT_T);
+      const eased = 1 - Math.pow(1-t, 2);
+      flyBall.position.lerpVectors(hitPoint, BALL_FLY_END, eased);
+      flyBall.scale.setScalar(1 - eased*0.6);
+    } else { flyBall.visible = false; }
+  } else {
+    if (ballFly) {
+      flyBall.visible = false;
+      if (progress < BALL_FLY_END_T) {
+        tennisBall.visible = true;
+        const t = (progress - BALL_HIT_T) / (BALL_FLY_END_T - BALL_HIT_T);
+        const eased = 1 - Math.pow(1-t, 2);
+        tennisBall.position.lerpVectors(hitPoint, BALL_FLY_END, eased);
+        tennisBall.scale.setScalar(1 - eased*0.6);
+      } else { tennisBall.visible = false; }
+    } else { tennisBall.visible = false; flyBall.visible = false; }
+  }
+}
+
+function animLoop(time) {
+  requestAnimationFrame(animLoop);
+  if (isPlaying) {
+    const dt = time - lastTime;
+    animProgress += (dt / ANIM_DURATION) * playbackRate;
+    if (animProgress >= 1) { animProgress = 0; fillMat.uniforms.uProgress.value = 0; ribbonMat.uniforms.uProgress.value = 0; }
+  }
+  lastTime = time;
+  if (isPlaying || isDragging) { fillMat.uniforms.uProgress.value = animProgress; ribbonMat.uniforms.uProgress.value = animProgress; }
+  // Markers
+  const showGeomMarker = (markerStyle==='ring'||markerStyle==='cross'||markerStyle==='star') && ((!isPlaying&&!isDragging)||animProgress>=BALL_HIT_T);
+  const pulse = 0.5+0.5*Math.sin(time*0.004), s = 0.9+0.15*pulse;
+  Object.entries(hitMarkers).forEach(([key, marker]) => {
+    if (key===markerStyle && showGeomMarker) { marker.visible=true; marker.scale.set(s,s,s); if(key==='star') marker.rotation.z=time*0.001; if(marker.material) marker.material.opacity=0.5+0.4*pulse; }
+    else { marker.visible=false; }
+  });
+  updateTennisBall(animProgress);
+  updatePlaybarUI();
+  controls.update();
+  renderer.render(scene, camera);
+}
+requestAnimationFrame(animLoop);
+
+// Speed
+const PEAK_SPEED = 189, MIN_SPEED = 35;
+function updatePlaybarUI() {
+  const fill = document.getElementById('playbar-fill');
+  const thumb = document.getElementById('playbar-thumb');
+  const timeEl = document.getElementById('playbar-time');
+  const pct = animProgress * 100;
+  fill.style.width = pct + '%'; thumb.style.left = pct + '%';
+  const totalSec = Math.round(ANIM_DURATION / 1000 / playbackRate);
+  const curSec = Math.round(animProgress * totalSec);
+  const fmt = (s2) => `00:${String(s2).padStart(2,'0')}`;
+  timeEl.textContent = `${fmt(curSec)} / ${fmt(totalSec)}`;
+  const peak = Math.exp(-Math.pow(animProgress - 0.57, 2) / 0.03);
+  const speed = Math.round(MIN_SPEED + (PEAK_SPEED - MIN_SPEED) * peak);
+  const el = document.getElementById('speed-value');
+  el.textContent = speed;
+  const speedNorm = Math.exp(-Math.pow(animProgress - 0.57, 2) / 0.08);
+  let r,g,b;
+  if(speedNorm<0.5){const ss=speedNorm/0.5;r=ss;g=0.75+ss*0.15;b=0.2*(1-ss);}else{const ss=(speedNorm-0.5)/0.5;r=1;g=0.9-ss*0.7;b=0;}
+  el.style.color = `rgb(${Math.round(r*255)},${Math.round(g*255)},${Math.round(b*255)})`;
+}
+
+// ============ UI Controls ============
+// Play button
+document.getElementById('play-btn').addEventListener('click', () => {
+  if (isPlaying) { isPlaying = false; document.getElementById('play-btn').classList.remove('playing'); }
+  else { if (animProgress >= 1) animProgress = 0; fillMat.uniforms.uProgress.value = 0; ribbonMat.uniforms.uProgress.value = 0; isPlaying = true; lastTime = performance.now(); document.getElementById('play-btn').classList.add('playing'); }
+});
+
+// Progress bar drag
+const progressBar = document.getElementById('playbar-progress');
+function seekTo(clientX) { const rect = progressBar.getBoundingClientRect(); let ratio = Math.max(0, Math.min(1, (clientX-rect.left)/rect.width)); animProgress = ratio; fillMat.uniforms.uProgress.value = animProgress; ribbonMat.uniforms.uProgress.value = animProgress; }
+progressBar.addEventListener('pointerdown', (e) => { isDragging = true; isPlaying = false; document.getElementById('play-btn').classList.remove('playing'); progressBar.setPointerCapture(e.pointerId); seekTo(e.clientX); });
+progressBar.addEventListener('pointermove', (e) => { if (isDragging) seekTo(e.clientX); });
+progressBar.addEventListener('pointerup', () => { isDragging = false; });
+progressBar.addEventListener('pointercancel', () => { isDragging = false; });
+
+// Rate
+const RATES = [0.25, 0.5, 1, 1.5, 2];
+let rateIndex = 2;
+document.getElementById('rate-btn').addEventListener('click', () => { rateIndex = (rateIndex+1)%RATES.length; playbackRate = RATES[rateIndex]; document.getElementById('rate-btn').textContent = playbackRate===1?'1x':playbackRate+'x'; });
+
+// ============ Scene control functions ============
+function setStyle(style) {
+  currentStyle = style;
+  if (style === 'ribbon') { shellMesh.visible = false; fillMesh.visible = false; ribbonMesh.visible = true; ribbonShellMesh.visible = true; }
+  else if (style === 'current') { shellMesh.visible = false; fillMesh.visible = true; ribbonMesh.visible = false; ribbonShellMesh.visible = false; }
+  else { shellMesh.visible = true; fillMesh.visible = true; ribbonMesh.visible = false; ribbonShellMesh.visible = false; }
+}
+
+function setMarker(m) {
+  if (ballFly && m === 'ball') return;
+  if (!ballFly && m === 'none') return;
+  markerStyle = m;
+}
+
+function setBallFly(fly) {
+  ballFly = fly;
+  if (fly && markerStyle === 'ball') { markerStyle = 'ring'; }
+  else if (!fly && markerStyle === 'none') { markerStyle = 'ball'; }
+  updateMarkerConstraints();
+}
+
+function setCourt(show) {
+  courtGroup.visible = show;
+}
+
+function updateMarkerConstraints() {
+  document.querySelectorAll('[data-marker]').forEach(b => {
+    if (ballFly && b.dataset.marker === 'ball') {
+      b.disabled = true; b.style.opacity = '0.3'; b.style.pointerEvents = 'none';
+    } else if (!ballFly && b.dataset.marker === 'none') {
+      b.disabled = true; b.style.opacity = '0.3'; b.style.pointerEvents = 'none';
+    } else {
+      b.disabled = false; b.style.opacity = ''; b.style.pointerEvents = '';
+    }
+  });
+  // Also update active state if current marker was forced to change
+  document.querySelectorAll('[data-marker]').forEach(b => {
+    b.classList.toggle('active', b.dataset.marker === markerStyle);
+  });
+}
+
+// ============ Free Play Panel Controls ============
+document.querySelectorAll('#freeplay-panel [data-style]').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('#freeplay-panel [data-style]').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    setStyle(btn.dataset.style);
+  });
+});
+document.getElementById('btn-court-toggle').addEventListener('click', () => {
+  document.getElementById('btn-court-toggle').classList.add('active');
+  document.getElementById('btn-court-hide').classList.remove('active');
+  setCourt(true);
+});
+document.getElementById('btn-court-hide').addEventListener('click', () => {
+  document.getElementById('btn-court-hide').classList.add('active');
+  document.getElementById('btn-court-toggle').classList.remove('active');
+  setCourt(false);
+});
+document.querySelectorAll('#freeplay-panel [data-marker]').forEach(btn => {
+  btn.addEventListener('click', () => {
+    if (btn.disabled) return;
+    document.querySelectorAll('#freeplay-panel [data-marker]').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    setMarker(btn.dataset.marker);
+  });
+});
+document.querySelectorAll('#freeplay-panel [data-fly]').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('#freeplay-panel [data-fly]').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    setBallFly(btn.dataset.fly === 'yes');
+  });
+});
+updateMarkerConstraints();
+
+// ============ Survey Logic ============
+const STEPS = [
+  {
+    id: 'court', title: '第 1 题：球场背景',
+    desc: '这张卡片里有一个网球场背景，但它不是你实际打球的位置，只是让画面看起来更有网球场景的氛围。你希望保留它吗？',
+    buttons: [
+      { label: '显示球场', value: 'show' }, { label: '隐藏球场', value: 'hide' }
+    ],
+    question: '你希望保留球场背景吗？',
+    options: [
+      { value: 'show', text: '保留 — 画面更丰富，更有网球氛围' },
+      { value: 'hide', text: '去掉 — 既然不是真实位置就不要' },
+      { value: 'whatever', text: '无所谓 — 有没有都行' },
+    ],
+    type: 'single',
+    applyBtn: (v) => { if (v === 'whatever') return; setCourt(v === 'show'); },
+  },
+  {
+    id: 'style', title: '第 2 题：动作轨迹效果',
+    desc: '画面中彩色的线条是你挥拍的动作轨迹。我们有三种展示方式，请切换对比看看。',
+    buttons: [
+      { label: '线条', value: 'current' }, { label: '管道', value: 'tube' }, { label: '飘带', value: 'ribbon' }
+    ],
+    question: '你更喜欢哪种轨迹展示方式？',
+    options: [
+      { value: 'current', text: '线条 — 彩色轨迹线，干净简洁' },
+      { value: 'tube', text: '管道 — 彩色管状 + 灰色壳展示完整轨迹形态' },
+      { value: 'ribbon', text: '飘带 — 扁平飘带式，有宽度和扭转变化' },
+    ],
+    type: 'single',
+    applyBtn: (v) => setStyle(v),
+  },
+  {
+    id: 'ballfly', title: '第 3 题：击球后球飞出',
+    desc: '击球后可以显示一个球飞出去的动画效果。但这个飞行方向是模拟的，不是你实际打出去的真实方向。你希望保留这个效果吗？',
+    buttons: [
+      { label: '球飞出', value: 'yes' }, { label: '不飞出', value: 'no' }
+    ],
+    question: '即使方向不完全真实，你希望看到球飞出的效果吗？',
+    options: [
+      { value: 'yes', text: '希望有 — 更有动感，视觉更像真实发球' },
+      { value: 'no', text: '不需要 — 不真实的东西宁可不做' },
+      { value: 'whatever', text: '无所谓 — 有没有都行' },
+    ],
+    type: 'single',
+    applyBtn: (v) => { if (v === 'whatever') return; setBallFly(v === 'yes'); },
+  },
+  {
+    id: 'marker', title: '第 4 题：击中提示',
+    desc: '在球拍击中球的瞬间，会有一个标记提示你这是击球点。你更喜欢哪种标记方式？',
+    buttons: [
+      { label: '网球', value: 'ball' }, { label: '光圈', value: 'ring' },
+      { label: '十字', value: 'cross' }, { label: '放射', value: 'star' }
+    ],
+    question: '你更喜欢哪种击球点标记？',
+    options: [
+      { value: 'ball', text: '网球 — 一个网球停留在击球位置' },
+      { value: 'ring', text: '光圈 — 发光圆环' },
+      { value: 'cross', text: '十字 — 十字准星 + 外圈' },
+      { value: 'star', text: '放射 — 向外放射的线条，带旋转' },
+    ],
+    type: 'single',
+    applyBtn: (v) => setMarker(v),
+  },
+  {
+    id: 'speed', title: '第 5 题：动画播放速度',
+    desc: '卡片中的轨迹动画可以用不同速度播放。请点击下方按钮切换速度，观看播放效果后选择你觉得最舒适的速度。',
+    buttons: [
+      { label: '0.25x 极慢', value: '0.25' }, { label: '0.5x 慢速', value: '0.5' }, { label: '1x 正常', value: '1' },
+      { label: '1.5x 较快', value: '1.5' }, { label: '2x 快速', value: '2' }
+    ],
+    question: '你觉得哪个播放速度最舒适？',
+    options: [
+      { value: '0.25', text: '0.25x 极慢 — 逐帧细看，几乎静止' },
+      { value: '0.5', text: '0.5x 慢速 — 看清每个细节' },
+      { value: '1', text: '1x 正常 — 节奏适中' },
+      { value: '1.5', text: '1.5x 较快 — 紧凑不拖沓' },
+      { value: '2', text: '2x 快速 — 一闪而过，更有冲击力' },
+    ],
+    type: 'single',
+    applyBtn: (v) => { playbackRate = parseFloat(v); document.getElementById('rate-btn').textContent = v === '1' ? '1x' : v + 'x'; if (!isPlaying) { animProgress = 0; isPlaying = true; lastTime = performance.now(); document.getElementById('play-btn').classList.add('playing'); } },
+  },
+  {
+    id: 'model', title: '第 6 题：人物模型感受',
+    desc: '下方是人物模型的参考效果图（非最终版本，仅供展示方向参考）。有用户反馈这类模型看起来像没穿衣服，可能会有不适感。',
+    image: 'model-reference.png',
+    buttons: [],
+    question: '你对这个人物模型的感受是？',
+    options: [
+      { value: 'fine', text: '没问题 — 能看出是运动姿态，没有不适' },
+      { value: 'uncomfortable', text: '确实有点不适 — 看着像没穿衣服' },
+      { value: 'whatever', text: '无所谓 — 没太注意' },
+    ],
+    type: 'single',
+    followup: {
+      question: '如果要改善模型观感，你倾向哪种方式？（可多选）',
+      options: [
+        { value: 'clothes', text: '加运动服纹理' },
+        { value: 'silhouette', text: '改成纯色剪影' },
+        { value: 'transparent', text: '降低不透明度，更抽象化' },
+        { value: 'nochange', text: '目前就挺好，不需要改' },
+      ],
+      type: 'multi'
+    },
+    applyBtn: () => {},
+  },
+];
+
+let currentStep = 0;
+let editingFromSummary = false;
+const answers = {};
+
+function renderStep(stepIdx) {
+  const panel = document.getElementById('survey-panel');
+  const step = STEPS[stepIdx];
+  const saved = answers[step.id] || {};
+
+  let html = '';
+  // Progress
+  html += `<div class="survey-progress"><div class="step-dots">`;
+  for (let i = 0; i < STEPS.length; i++) {
+    const cls = i < stepIdx ? 'done' : (i === stepIdx ? 'current' : '');
+    html += `<div class="step-dot ${cls}"></div>`;
+  }
+  html += `</div><span class="step-label">${stepIdx+1}/${STEPS.length}</span></div>`;
+
+  // Title & desc
+  html += `<div class="survey-title">${step.title}</div>`;
+  html += `<div class="survey-desc">${step.desc}</div>`;
+
+  // Reference image
+  if (step.image) {
+    html += `<div class="survey-image"><img src="${step.image}" alt="参考图"><div class="survey-image-note">⬆ 参考效果图，非最终版本</div></div>`;
+  }
+
+  // Operation buttons
+  if (step.buttons.length > 0) {
+    html += `<div class="survey-btns" id="step-btns">`;
+    step.buttons.forEach(b => {
+      const active = saved.btnValue === b.value ? ' active' : '';
+      html += `<button data-val="${b.value}"${active}>${b.label}</button>`;
+    });
+    html += `</div>`;
+  }
+
+  // Question
+  html += `<div class="survey-question">${step.question}</div>`;
+  html += `<div class="survey-options" id="step-options">`;
+  step.options.forEach(opt => {
+    const sel = saved.choice === opt.value ? ' selected' : '';
+    html += `<div class="survey-option${sel}" data-val="${opt.value}"><div class="radio"></div><span class="opt-text">${opt.text}</span></div>`;
+  });
+  html += `</div>`;
+
+  // Followup (multi-select, conditional on choosing 'uncomfortable')
+  if (step.followup) {
+    const showFollowup = saved.choice === 'uncomfortable';
+    html += `<div id="followup-wrap" style="display:${showFollowup ? 'block' : 'none'}">`;
+    html += `<div class="survey-question">${step.followup.question}</div>`;
+    html += `<div class="survey-options" id="step-followup">`;
+    step.followup.options.forEach(opt => {
+      const sel = (saved.followup || []).includes(opt.value) ? ' selected' : '';
+      html += `<div class="survey-option${sel}" data-val="${opt.value}"><div class="checkbox"></div><span class="opt-text">${opt.text}</span></div>`;
+    });
+    html += `</div></div>`;
+  }
+
+  // Comment
+  html += `<textarea class="survey-textarea" id="step-comment" placeholder="你的想法或补充（选填）">${saved.comment || ''}</textarea>`;
+
+  // Nav
+  html += `<div class="survey-nav">`;
+  if (editingFromSummary) {
+    html += `<button class="btn-submit" id="btn-back-summary">返回汇总</button>`;
+  } else {
+    if (stepIdx > 0) html += `<button class="btn-prev" id="btn-prev">上一题</button>`;
+    if (stepIdx < STEPS.length - 1) html += `<button class="btn-next" id="btn-next">下一题</button>`;
+    else html += `<button class="btn-submit" id="btn-next">查看汇总</button>`;
+  }
+  html += `</div>`;
+
+  panel.innerHTML = html;
+
+  // Apply marker constraints in marker step
+  if (step.id === 'marker') {
+    panel.querySelectorAll('#step-btns button').forEach(b => {
+      if (ballFly && b.dataset.val === 'ball') { b.disabled = true; b.style.opacity = '0.3'; b.style.pointerEvents = 'none'; }
+      else if (!ballFly && b.dataset.val === 'none') { b.disabled = true; b.style.opacity = '0.3'; b.style.pointerEvents = 'none'; }
+    });
+    panel.querySelectorAll('#step-options .survey-option').forEach(o => {
+      if (ballFly && o.dataset.val === 'ball') { o.style.opacity = '0.4'; o.style.pointerEvents = 'none'; }
+      else if (!ballFly && o.dataset.val === 'none') { o.style.opacity = '0.4'; o.style.pointerEvents = 'none'; }
+    });
+  }
+
+  // Bind events
+  panel.querySelectorAll('#step-btns button').forEach(btn => {
+    btn.addEventListener('click', () => {
+      if (btn.disabled) return;
+      panel.querySelectorAll('#step-btns button').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      step.applyBtn(btn.dataset.val);
+      if (!answers[step.id]) answers[step.id] = {};
+      answers[step.id].btnValue = btn.dataset.val;
+      // Auto-select matching option
+      const matchOpt = panel.querySelector(`#step-options .survey-option[data-val="${btn.dataset.val}"]`);
+      if (matchOpt) {
+        panel.querySelectorAll('#step-options .survey-option').forEach(o => o.classList.remove('selected'));
+        matchOpt.classList.add('selected');
+        answers[step.id].choice = btn.dataset.val;
+      }
+    });
+  });
+
+  panel.querySelectorAll('#step-options .survey-option').forEach(opt => {
+    opt.addEventListener('click', () => {
+      panel.querySelectorAll('#step-options .survey-option').forEach(o => o.classList.remove('selected'));
+      opt.classList.add('selected');
+      if (!answers[step.id]) answers[step.id] = {};
+      answers[step.id].choice = opt.dataset.val;
+      step.applyBtn(opt.dataset.val);
+      // Also sync buttons
+      const matchBtn = panel.querySelector(`#step-btns button[data-val="${opt.dataset.val}"]`);
+      if (matchBtn) {
+        panel.querySelectorAll('#step-btns button').forEach(b => b.classList.remove('active'));
+        matchBtn.classList.add('active');
+        answers[step.id].btnValue = opt.dataset.val;
+      }
+      // Show/hide followup based on choice
+      const followupWrap = panel.querySelector('#followup-wrap');
+      if (followupWrap) {
+        followupWrap.style.display = opt.dataset.val === 'uncomfortable' ? 'block' : 'none';
+        if (opt.dataset.val !== 'uncomfortable') { answers[step.id].followup = []; }
+      }
+    });
+  });
+
+  if (step.followup) {
+    panel.querySelectorAll('#step-followup .survey-option').forEach(opt => {
+      opt.addEventListener('click', () => {
+        opt.classList.toggle('selected');
+        if (!answers[step.id]) answers[step.id] = {};
+        if (!answers[step.id].followup) answers[step.id].followup = [];
+        const val = opt.dataset.val;
+        if (opt.classList.contains('selected')) { if (!answers[step.id].followup.includes(val)) answers[step.id].followup.push(val); }
+        else { answers[step.id].followup = answers[step.id].followup.filter(v => v !== val); }
+      });
+    });
+  }
+
+  const btnBackSummary = panel.querySelector('#btn-back-summary');
+  if (btnBackSummary) btnBackSummary.addEventListener('click', () => {
+    saveCurrentComment();
+    editingFromSummary = false;
+    renderSummary();
+    panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  });
+
+  const btnNext = panel.querySelector('#btn-next');
+  if (btnNext) btnNext.addEventListener('click', () => {
+    // 校验必选
+    const ans = answers[step.id];
+    if (!ans || !ans.choice) {
+      shakeBtn(btnNext);
+      return;
+    }
+    saveCurrentComment();
+    if (stepIdx < STEPS.length - 1) { currentStep++; renderStep(currentStep); }
+    else { renderSummary(); }
+    panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  });
+
+  const btnPrev = panel.querySelector('#btn-prev');
+  if (btnPrev) btnPrev.addEventListener('click', () => {
+    saveCurrentComment();
+    currentStep--; renderStep(currentStep);
+    panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  });
+}
+
+function shakeBtn(btn) {
+  btn.style.animation = 'none';
+  btn.offsetHeight; // reflow
+  btn.style.animation = 'shake 0.4s ease';
+  // 显示提示
+  let tip = document.getElementById('required-tip');
+  if (!tip) {
+    tip = document.createElement('div');
+    tip.id = 'required-tip';
+    tip.style.cssText = 'color:#f44336;font-size:12px;text-align:right;margin-top:6px;';
+    btn.parentElement.appendChild(tip);
+  }
+  tip.textContent = '请先选择一个选项';
+  setTimeout(() => { if (tip) tip.textContent = ''; }, 2500);
+}
+
+function saveCurrentComment() {
+  const step = STEPS[currentStep];
+  const textarea = document.getElementById('step-comment');
+  if (textarea) {
+    if (!answers[step.id]) answers[step.id] = {};
+    answers[step.id].comment = textarea.value;
+  }
+}
+
+// ============ Summary Page ============
+const LABELS = {
+  court: { show: '显示球场', hide: '隐藏球场', whatever: '无所谓' },
+  style: { current: '线条', tube: '管道', ribbon: '飘带' },
+  marker: { ball: '网球', ring: '光圈', cross: '十字', star: '放射' },
+  ballfly: { yes: '球飞出', no: '不飞出', whatever: '无所谓' },
+  speed: { '0.25': '0.25x 极慢', '0.5': '0.5x 慢速', '1': '1x 正常', '1.5': '1.5x 较快', '2': '2x 快速' },
+  model: { fine: '没问题', uncomfortable: '有点不适', whatever: '无所谓' },
+  followup: { clothes: '加运动服纹理', silhouette: '纯色剪影', transparent: '降低不透明度', nochange: '不需要改' },
+};
+
+function renderSummary() {
+  const panel = document.getElementById('survey-panel');
+  let html = `<div class="survey-title">Part 1 汇总</div>`;
+  html += `<div class="survey-desc">以下是你对「发球轨迹卡片」的全部选择。确认无误后将进入第二部分体验。</div>`;
+
+  STEPS.forEach((step, idx) => {
+    const ans = answers[step.id] || {};
+    const choiceLabel = ans.choice ? (LABELS[step.id]?.[ans.choice] || ans.choice) : '未选择';
+    html += `<div class="summary-section">`;
+    html += `<div class="summary-label">${step.title}</div>`;
+    html += `<div class="summary-value">${choiceLabel}</div>`;
+    if (step.followup && ans.followup && ans.followup.length > 0) {
+      const fLabels = ans.followup.map(v => LABELS.followup[v] || v).join('、');
+      html += `<div class="summary-value" style="font-size:13px;color:#555;">改善方式：${fLabels}</div>`;
+    }
+    if (ans.comment) html += `<div class="summary-comment">"${ans.comment}"</div>`;
+    html += `<button class="summary-edit-btn" data-step="${idx}">修改</button>`;
+    html += `</div>`;
+  });
+
+  html += `<div class="export-area">`;
+  html += `<button class="btn-submit" id="btn-confirm" style="background:#222;">确认，进入第二部分 →</button>`;
+  html += `</div>`;
+
+  panel.innerHTML = html;
+
+  panel.querySelectorAll('.summary-edit-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      editingFromSummary = true;
+      currentStep = parseInt(btn.dataset.step);
+      renderStep(currentStep);
+    });
+  });
+
+  document.getElementById('btn-confirm').addEventListener('click', () => {
+    // 存 Part1 答案到 localStorage，跳转 Part2
+    localStorage.setItem('tennis-survey-part1-answers', JSON.stringify(answers));
+    window.location.href = 'tennis-survey-part2.html';
+  });
+}
+
+
+// ============ Start Survey ============
+document.getElementById('btn-begin-survey').addEventListener('click', () => {
+  document.getElementById('freeplay-panel').classList.add('hidden');
+  document.getElementById('freeplay-start').classList.add('hidden');
+  document.getElementById('survey-panel').classList.remove('hidden');
+  currentStep = 0;
+  renderStep(0);
+});
+
+</script>
+</body>
+</html>

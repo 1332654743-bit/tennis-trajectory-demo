@@ -1,0 +1,1544 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>发球轨迹视频 · 用户调研（Part 2）</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html, body { height: 100%; font-family: -apple-system, BlinkMacSystemFont, 'SF Pro', 'PingFang SC', sans-serif; background: #f5f5f5; }
+
+.page { display: flex; flex-direction: column; align-items: center; min-height: 100vh; }
+
+/* ========== Video Preview Area ========== */
+.video-wrap {
+  width: 100%; max-width: 430px; background: #000; position: relative;
+  height: 55vh; min-height: 320px; overflow: hidden; flex-shrink: 0;
+}
+#three-canvas { width: 100%; height: 100%; display: block; }
+
+.speed-display {
+  position: absolute; top: 40px; left: 50%; transform: translateX(-50%);
+  pointer-events: none; z-index: 6; transition: opacity 0.3s;
+  text-align: center;
+}
+.speed-display .speed-label { font-size: 11px; color: #aaa; margin-bottom: 2px; }
+.speed-display .speed-value { font-size: 48px; font-weight: 800; color: #fff; line-height: 1; transition: transform 0.2s; }
+.speed-display .speed-unit { font-size: 12px; color: #aaa; margin-top: 2px; }
+.speed-display.peak .speed-value {
+  transform: scale(1.3);
+  text-shadow: 0 0 24px currentColor, 0 0 48px currentColor;
+}
+.speed-display.peak .speed-max-tag { display: inline-block; }
+.speed-max-tag {
+  display: none;
+  background: #ff4500; color: #fff; font-size: 10px; font-weight: 700;
+  padding: 2px 8px; border-radius: 4px; margin-left: 6px; vertical-align: super;
+  animation: peakPulse 0.6s ease-in-out infinite alternate;
+}
+@keyframes peakPulse {
+  from { opacity: 0.7; transform: scale(0.9); }
+  to { opacity: 1; transform: scale(1.1); }
+}
+
+.play-overlay {
+  position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+  width: 56px; height: 56px; border-radius: 50%;
+  background: rgba(0,0,0,0.5); border: 2px solid rgba(255,255,255,0.6);
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; z-index: 5; transition: opacity 0.3s;
+}
+.play-overlay.hidden { opacity: 0; pointer-events: none; }
+.play-overlay::after { content: '\25B6'; color: #fff; font-size: 18px; margin-left: 3px; }
+
+/* Chart overlay */
+.card-chart-area {
+  position: absolute; right: 12px; bottom: 90px;
+  width: 120px; height: 120px; pointer-events: none;
+  opacity: 0; transition: opacity 0.5s;
+}
+.card-chart-area.show { opacity: 1; }
+.card-chart-area canvas { width: 100%; height: 100%; }
+
+/* Data overlay at bottom of video */
+.card-overlay {
+  position: absolute; bottom: 0; left: 0; right: 0;
+  padding: 12px; pointer-events: none;
+  opacity: 0; transition: opacity 0.5s;
+  background: linear-gradient(transparent, rgba(0,0,0,0.6));
+}
+.card-overlay.show { opacity: 1; }
+.card-subs { display: flex; justify-content: space-around; gap: 6px; }
+.card-sub { text-align: center; }
+.card-sub .sv { font-size: 20px; font-weight: 700; color: #fff; }
+.card-sub .su { font-size: 9px; color: #aaa; }
+.card-sub .sl { font-size: 10px; color: #888; margin-top: 2px; }
+
+.video-disclaimer {
+  position: absolute; top: 12px; left: 0; right: 0;
+  text-align: center; font-size: 11px; color: rgba(255,255,255,0.5);
+  pointer-events: none; z-index: 4;
+}
+
+/* ========== Survey Panel (below video) ========== */
+.survey-scroll {
+  width: 100%; max-width: 430px; flex: 1; overflow-y: auto;
+  padding: 16px 16px 40px;
+}
+
+/* Free play panel */
+.freeplay-panel {
+  background: #fff; border-radius: 12px; padding: 14px 16px;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.06); margin-bottom: 12px;
+}
+.freeplay-panel .panel-title {
+  font-size: 13px; color: #666; font-weight: 600; margin-bottom: 10px;
+}
+.freeplay-panel .panel-row {
+  display: flex; align-items: center; padding: 8px 0; gap: 12px;
+}
+.freeplay-panel .panel-row:not(:last-child) { border-bottom: 1px solid #f5f5f5; }
+.freeplay-panel .panel-label { font-size: 12px; color: #888; width: 56px; flex-shrink: 0; }
+.freeplay-panel .panel-btns { display: flex; gap: 6px; flex-wrap: wrap; }
+.freeplay-panel .panel-btns button {
+  padding: 5px 12px; font-size: 11px; border: 1px solid #e0e0e0; cursor: pointer;
+  color: #666; background: #fafafa; border-radius: 14px; transition: all 0.2s;
+}
+.freeplay-panel .panel-btns button.active { background: #222; color: #fff; border-color: #222; }
+.freeplay-panel .panel-btns button.pill-selected { background: #ff6b00; color: #fff; border-color: #ff6b00; }
+
+.freeplay-start {
+  margin-bottom: 12px; text-align: center;
+}
+
+/* Survey panel */
+.survey-panel {
+  background: #fff; border-radius: 12px; padding: 20px;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+}
+.survey-progress {
+  display: flex; align-items: center; gap: 8px; margin-bottom: 16px;
+}
+.survey-progress .step-dots { display: flex; gap: 4px; flex: 1; }
+.survey-progress .step-dot {
+  width: 100%; height: 3px; border-radius: 2px; background: #e0e0e0; transition: background 0.3s;
+}
+.survey-progress .step-dot.done { background: #4caf50; }
+.survey-progress .step-dot.current { background: #222; }
+.survey-progress .step-label { font-size: 11px; color: #999; white-space: nowrap; }
+
+.survey-title { font-size: 15px; font-weight: 600; color: #222; margin-bottom: 6px; }
+.survey-desc { font-size: 13px; color: #666; line-height: 1.6; margin-bottom: 16px; }
+
+/* Operation buttons within survey */
+.survey-btns {
+  display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 16px;
+}
+.survey-btns button {
+  padding: 8px 16px; font-size: 13px; border: 1.5px solid #e0e0e0; cursor: pointer;
+  color: #555; background: #fafafa; border-radius: 20px; transition: all 0.2s;
+}
+.survey-btns button.active { background: #222; color: #fff; border-color: #222; }
+.survey-btns button.pill-selected { background: #ff6b00; color: #fff; border-color: #ff6b00; }
+
+/* Question area */
+.survey-question { font-size: 14px; font-weight: 500; color: #333; margin-bottom: 10px; }
+.survey-options { display: flex; flex-direction: column; gap: 8px; margin-bottom: 14px; }
+.survey-option {
+  display: flex; align-items: center; gap: 10px; padding: 10px 14px;
+  border: 1.5px solid #e8e8e8; border-radius: 10px; cursor: pointer; transition: all 0.2s;
+}
+.survey-option.selected { border-color: #4caf50; background: #f0faf0; }
+.survey-option .radio {
+  width: 18px; height: 18px; border-radius: 50%; border: 2px solid #ccc;
+  display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+}
+.survey-option.selected .radio { border-color: #4caf50; }
+.survey-option.selected .radio::after { content: ''; width: 10px; height: 10px; border-radius: 50%; background: #4caf50; }
+.survey-option .checkbox {
+  width: 18px; height: 18px; border-radius: 4px; border: 2px solid #ccc;
+  display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+}
+.survey-option.selected .checkbox { border-color: #4caf50; background: #4caf50; }
+.survey-option.selected .checkbox::after { content: '\2713'; color: #fff; font-size: 12px; font-weight: 700; }
+.survey-option .opt-text { font-size: 13px; color: #333; }
+.survey-option .opt-desc { font-size: 11px; color: #999; margin-top: 2px; }
+
+.survey-textarea {
+  width: 100%; min-height: 60px; border: 1.5px solid #e8e8e8; border-radius: 10px;
+  padding: 10px 12px; font-size: 13px; resize: vertical; outline: none;
+  font-family: inherit; color: #333; margin-bottom: 14px;
+}
+.survey-textarea:focus { border-color: #4caf50; }
+.survey-textarea::placeholder { color: #bbb; }
+
+.survey-nav { display: flex; gap: 10px; justify-content: flex-end; }
+.btn-next, .btn-prev, .btn-submit {
+  padding: 10px 24px; border-radius: 20px; font-size: 14px; font-weight: 500;
+  cursor: pointer; border: none; transition: all 0.2s;
+}
+.btn-next { background: #222; color: #fff; }
+.btn-next:hover { background: #444; }
+.btn-prev { background: #f0f0f0; color: #555; }
+.btn-prev:hover { background: #e0e0e0; }
+.btn-submit { background: #4caf50; color: #fff; }
+.btn-submit:hover { background: #43a047; }
+
+/* Summary */
+.summary-section { margin-bottom: 16px; padding-bottom: 14px; border-bottom: 1px solid #f0f0f0; }
+.summary-section:last-child { border-bottom: none; }
+.summary-label { font-size: 12px; color: #999; margin-bottom: 4px; }
+.summary-value { font-size: 14px; color: #222; font-weight: 500; }
+.summary-edit-btn {
+  font-size: 12px; color: #4caf50; background: none; border: none; cursor: pointer;
+  margin-top: 4px; padding: 0;
+}
+
+/* Export */
+.export-area { margin-top: 16px; text-align: center; }
+.btn-export {
+  padding: 10px 28px; border-radius: 20px; font-size: 14px;
+  background: #ff6b00; color: #fff; border: none; cursor: pointer; font-weight: 500;
+}
+.btn-copy {
+  padding: 10px 28px; border-radius: 20px; font-size: 14px;
+  background: #eee; color: #555; border: none; cursor: pointer; font-weight: 500; margin-left: 10px;
+}
+
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  20% { transform: translateX(-4px); }
+  40% { transform: translateX(4px); }
+  60% { transform: translateX(-3px); }
+  80% { transform: translateX(3px); }
+}
+
+.hidden { display: none !important; }
+</style>
+</head>
+<body>
+<div class="page">
+  <!-- Video Preview Area -->
+  <div class="video-wrap">
+    <canvas id="three-canvas"></canvas>
+    <div class="video-disclaimer">该视频展示仅作为运镜效果演示</div>
+    <div class="speed-display" id="speed-display">
+      <div class="speed-label">发球速度</div>
+      <div class="speed-value"><span id="speed-value">0</span><span class="speed-max-tag">MAX</span></div>
+      <div class="speed-unit">km/h</div>
+    </div>
+    <div class="play-overlay" id="play-overlay"></div>
+    <div class="card-chart-area" id="card-chart-area"><canvas id="overlay-chart"></canvas></div>
+    <div class="card-overlay" id="card-overlay">
+      <div class="card-subs" id="card-subs"></div>
+    </div>
+  </div>
+
+  <!-- Survey scroll area -->
+  <div class="survey-scroll">
+    <!-- Part1 继承提示 -->
+    <div id="part1-inherit-info" style="background:#e8f5e9;border-radius:10px;padding:10px 14px;margin-bottom:12px;font-size:12px;color:#2e7d32;line-height:1.6;"></div>
+
+    <!-- Free Play Panel -->
+    <div class="freeplay-panel" id="freeplay-panel">
+      <div class="panel-title">请先自由体验视频 Demo（切换运镜、数据、图表后点击播放按钮查看效果）</div>
+      <div class="panel-row">
+        <span class="panel-label">运镜选择</span>
+        <div class="panel-btns" id="fp-angle-btns">
+          <button class="active" data-angle="orbit">环绕聚焦</button>
+          <button data-angle="pushin">跟随推进</button>
+          <button data-angle="bullet">子弹时间</button>
+          <button data-angle="autocut">多机位</button>
+          <button data-angle="shoulder">肩上视角</button>
+        </div>
+      </div>
+      <div class="panel-row">
+        <span class="panel-label">数据展示</span>
+        <div class="panel-btns" id="fp-data-btns">
+          <button class="pill-selected" data-pill="max_serve">最大发球速度</button>
+          <button class="pill-selected" data-pill="max_hit">最大击球速度</button>
+          <button class="pill-selected" data-pill="max_rally">最长连拍</button>
+          <button data-pill="avg_hr">平均心率</button>
+          <button data-pill="max_speed">最大拍速</button>
+          <button data-pill="avg_speed">平均拍速</button>
+        </div>
+      </div>
+      <div class="panel-row">
+        <span class="panel-label">图表展示</span>
+        <div class="panel-btns" id="fp-chart-btns">
+          <button class="active" data-chart="radar">训练表现图</button>
+          <button data-chart="heartrate">心率曲线</button>
+          <button data-chart="speed_bar">速度柱状图</button>
+          <button data-chart="hands">正反手分布</button>
+          <button data-chart="stroke">击球姿势</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="freeplay-start" id="freeplay-start">
+      <button class="btn-next" id="btn-begin-survey" style="width:100%;padding:14px;font-size:15px;">体验完毕，开始答题</button>
+    </div>
+
+    <!-- Survey Panel (hidden initially) -->
+    <div class="survey-panel hidden" id="survey-panel"></div>
+  </div>
+</div>
+
+<script type="importmap">
+{ "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js", "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/" } }
+</script>
+<script>
+// 如果没有 Part1 数据，跳回 Part1 开始
+if (!localStorage.getItem('tennis-survey-part1-answers')) {
+  window.location.replace('tennis-survey.html');
+}
+</script>
+<script type="module">
+import * as THREE from 'three';
+import { OBJLoader } from 'three/addons/loaders/OBJLoader.js';
+
+// ============ Part1 Inheritance ============
+let part1Style = 'tube';
+let part1Marker = 'ring';
+let part1BallFly = true;
+let part1Court = true;
+let part1Answers = {};
+
+(function loadPart1Choices() {
+  try {
+    // 优先从 Part1 跳转传来的答案读取
+    const p1raw = localStorage.getItem('tennis-survey-part1-answers');
+    if (p1raw) {
+      part1Answers = JSON.parse(p1raw);
+      const ans = part1Answers;
+      if (ans.style && ans.style.choice) part1Style = ans.style.choice;
+      if (ans.marker && ans.marker.choice) part1Marker = ans.marker.choice;
+      if (ans.ballfly && ans.ballfly.choice) part1BallFly = ans.ballfly.choice === 'yes';
+      if (ans.court && ans.court.choice) part1Court = ans.court.choice !== 'hide';
+      return;
+    }
+    // fallback: 从历史记录读取
+    const stored = JSON.parse(localStorage.getItem('tennis-survey-results') || '[]');
+    if (stored.length > 0) {
+      const last = stored[stored.length - 1];
+      const ans = last.answers || {};
+      if (ans.style && ans.style.choice) part1Style = ans.style.choice;
+      if (ans.marker && ans.marker.choice) part1Marker = ans.marker.choice;
+      if (ans.ballfly && ans.ballfly.choice) part1BallFly = ans.ballfly.choice === 'yes';
+      if (ans.court && ans.court.choice) part1Court = ans.court.choice !== 'hide';
+    }
+  } catch(e) { /* use defaults */ }
+})();
+
+// ============ State ============
+let isPlaying = false;
+let animProgress = 0;
+const MOVE_DURATION = 6000;
+const HOLD_DURATION = 2500;
+const TOTAL_DURATION = MOVE_DURATION + HOLD_DURATION;
+let lastTime = 0;
+let currentAngle = 'orbit';
+
+// Data
+const angles = [
+  { key: 'orbit', name: '环绕聚焦', icon: '🔄' },
+  { key: 'pushin', name: '跟随推进', icon: '🎬' },
+  { key: 'bullet', name: '子弹时间', icon: '⚡' },
+  { key: 'autocut', name: '多机位剪辑', icon: '🎥' },
+  { key: 'shoulder', name: '肩上视角', icon: '👁' },
+];
+
+const subDataList = [
+  { key: 'max_serve', label: '最大发球速度', value: 123, unit: '公里/小时', icon: '🎾' },
+  { key: 'max_hit', label: '最大击球速度', value: 132, unit: '公里/小时', icon: '🎾' },
+  { key: 'max_rally', label: '最长连拍', value: 2331, unit: '千卡', icon: '🔗' },
+  { key: 'avg_hr', label: '平均心率', value: 124, unit: 'bpm', icon: '❤️' },
+  { key: 'max_speed', label: '最大拍速', value: 168, unit: 'km/h', icon: '🎾' },
+  { key: 'avg_speed', label: '平均拍速', value: 108, unit: 'km/h', icon: '🎾' },
+];
+let selectedSubs = ['max_serve', 'max_hit', 'max_rally'];
+
+const charts = [
+  { key: 'radar', name: '训练表现图' },
+  { key: 'heartrate', name: '心率曲线' },
+  { key: 'speed_bar', name: '速度柱状图' },
+  { key: 'hands', name: '正反手分布' },
+  { key: 'stroke', name: '击球姿势分布' },
+];
+let selectedChart = 'radar';
+
+// ============ Three.js Scene ============
+let renderer, scene, camera, hitMarker;
+let wristCurve, curvePoints, sceneCenter, hitPoint;
+let shellMesh, fillMesh, courtGroup, tennisBall;
+const shoulderPos = new THREE.Vector3(-0.35, 1.5, -0.1);
+
+const canvas = document.getElementById('three-canvas');
+renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+renderer.setPixelRatio(window.devicePixelRatio);
+renderer.setClearColor(0x0a1e2e);
+
+scene = new THREE.Scene();
+camera = new THREE.PerspectiveCamera(65, canvas.clientWidth / canvas.clientHeight, 0.01, 50);
+
+function resize() {
+  const w = canvas.clientWidth, h = canvas.clientHeight;
+  renderer.setSize(w, h, false);
+  camera.aspect = w / h;
+  camera.updateProjectionMatrix();
+}
+resize();
+window.addEventListener('resize', resize);
+
+scene.add(new THREE.AmbientLight(0xffffff, 0.7));
+const dl = new THREE.DirectionalLight(0xffffff, 0.9);
+dl.position.set(2, 4, 2);
+scene.add(dl);
+
+// Court
+courtGroup = new THREE.Group();
+scene.add(courtGroup);
+
+function buildCourt() {
+  const S = 0.33;
+  const halfLen = 11.89 * S, singleW = 8.23 * S / 2, doubleW = 10.97 * S / 2;
+  const serviceLen = 6.4 * S, netH = 0.914 * S;
+  const baselineZ = 0.6, netZ = baselineZ + halfLen, serviceZ = netZ - serviceLen;
+
+  const courtGeo = new THREE.PlaneGeometry(doubleW * 2 + 1, halfLen + 2);
+  const courtMat = new THREE.MeshLambertMaterial({ color: 0x0f2e3d });
+  const court = new THREE.Mesh(courtGeo, courtMat);
+  court.rotation.x = -Math.PI / 2;
+  court.position.set(0, -0.01, baselineZ + halfLen / 2);
+  courtGroup.add(court);
+
+  const outerGeo = new THREE.PlaneGeometry(doubleW * 2 + 4, halfLen + 8);
+  const outerMat = new THREE.MeshLambertMaterial({ color: 0x091a24 });
+  const outer = new THREE.Mesh(outerGeo, outerMat);
+  outer.rotation.x = -Math.PI / 2;
+  outer.position.set(0, -0.02, baselineZ + halfLen / 2 - 2);
+  courtGroup.add(outer);
+
+  const lineMat = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.3 });
+  function addLine(x1, z1, x2, z2) {
+    const dx = x2 - x1, dz = z2 - z1, len = Math.sqrt(dx*dx + dz*dz);
+    const geo = new THREE.PlaneGeometry(0.02, len);
+    const mesh = new THREE.Mesh(geo, lineMat);
+    mesh.rotation.x = -Math.PI / 2;
+    mesh.rotation.z = -Math.atan2(dx, dz);
+    mesh.position.set((x1+x2)/2, 0.001, (z1+z2)/2);
+    courtGroup.add(mesh);
+  }
+  addLine(-doubleW, baselineZ, doubleW, baselineZ);
+  addLine(-doubleW, baselineZ, -doubleW, netZ);
+  addLine(doubleW, baselineZ, doubleW, netZ);
+  addLine(-singleW, baselineZ, -singleW, netZ);
+  addLine(singleW, baselineZ, singleW, netZ);
+  addLine(-singleW, serviceZ, singleW, serviceZ);
+  addLine(0, serviceZ, 0, netZ);
+
+  const netGeo = new THREE.PlaneGeometry(doubleW * 2 + 0.3, netH);
+  const netMat = new THREE.MeshBasicMaterial({ color: 0x888888, transparent: true, opacity: 0.15, side: THREE.DoubleSide });
+  const netMesh = new THREE.Mesh(netGeo, netMat);
+  netMesh.position.set(0, netH / 2, netZ);
+  courtGroup.add(netMesh);
+
+  const topLineGeo = new THREE.PlaneGeometry(doubleW * 2 + 0.3, 0.015);
+  const topLineMat = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.4 });
+  const topLineMesh = new THREE.Mesh(topLineGeo, topLineMat);
+  topLineMesh.position.set(0, netH, netZ);
+  courtGroup.add(topLineMesh);
+}
+buildCourt();
+
+// Apply Part1 court choice
+courtGroup.visible = part1Court;
+
+// Trajectory
+const points = [
+  new THREE.Vector3(-0.25, 0.0, -0.2),
+  new THREE.Vector3(-0.15, 0.54, -0.3),
+  new THREE.Vector3(0.0, 1.14, -0.15),
+  new THREE.Vector3(0.15, 1.49, 0.05),
+  new THREE.Vector3(0.05, 1.64, 0.15),
+  new THREE.Vector3(0.35, 1.14, 0.35),
+  new THREE.Vector3(0.55, 0.44, 0.5),
+];
+wristCurve = new THREE.CatmullRomCurve3(points);
+curvePoints = wristCurve.getPoints(100);
+sceneCenter = new THREE.Vector3();
+curvePoints.forEach(p => sceneCenter.add(p));
+sceneCenter.divideScalar(curvePoints.length);
+
+const hitTarget = new THREE.Vector3(0.05, 1.64, 0.15);
+let hitParamT = 0.57;
+let minDist = Infinity;
+for (let i = 0; i <= 500; i++) {
+  const t = i / 500;
+  const d = wristCurve.getPointAt(t).distanceTo(hitTarget);
+  if (d < minDist) { minDist = d; hitParamT = t; }
+}
+hitPoint = wristCurve.getPointAt(hitParamT);
+
+// Shell (gray transparent tube showing full trajectory)
+const shellGeo = new THREE.TubeGeometry(wristCurve, 80, 0.025, 12, false);
+const shellMat = new THREE.MeshLambertMaterial({ color: 0x888888, transparent: true, opacity: 0.2, depthWrite: false });
+shellMesh = new THREE.Mesh(shellGeo, shellMat);
+shellMesh.renderOrder = 0;
+scene.add(shellMesh);
+
+// Fill tube (colored, progress-driven)
+const fillGeo = new THREE.TubeGeometry(wristCurve, 80, 0.022, 12, false);
+const segCount = 80, radialCount = 12, vertsPerRing = radialCount + 1;
+const tValues = new Float32Array(fillGeo.attributes.position.count);
+for (let seg = 0; seg <= segCount; seg++) {
+  const t = seg / segCount;
+  for (let v = 0; v < vertsPerRing; v++) tValues[seg * vertsPerRing + v] = t;
+}
+fillGeo.setAttribute('aT', new THREE.Float32BufferAttribute(tValues, 1));
+
+const fillMat = new THREE.ShaderMaterial({
+  uniforms: { uProgress: { value: 0.0 } },
+  vertexShader: `attribute float aT; varying float vT; void main(){vT=aT;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0);}`,
+  fragmentShader: `uniform float uProgress;varying float vT;void main(){if(vT>uProgress)discard;float speed=exp(-pow(vT-0.57,2.0)/0.08);vec3 color;if(speed<0.5){float s=speed/0.5;color=vec3(s,0.75+s*0.15,0.2*(1.0-s));}else{float s=(speed-0.5)/0.5;color=vec3(1.0,0.9-s*0.7,0.0);}gl_FragColor=vec4(color,0.95);}`,
+  transparent: true, side: THREE.DoubleSide, depthTest: true, depthWrite: true
+});
+fillMesh = new THREE.Mesh(fillGeo, fillMat);
+fillMesh.renderOrder = 1;
+scene.add(fillMesh);
+
+// ============ Ribbon Geometry (for Part1 ribbon style) ============
+function buildRibbonGeometry(curve, segments, halfWidth) {
+  const positions = [], tAttrs = [], edgeAttrs = [], indices = [];
+  for (let i = 0; i <= segments; i++) {
+    const t = i / segments;
+    const point = curve.getPointAt(t);
+    const tangent = curve.getTangentAt(t).normalize();
+    const twistAngle = Math.PI * 0.3 * Math.sin(t * Math.PI * 1.5) + t * Math.PI * 0.8;
+    let up = new THREE.Vector3(0, 1, 0);
+    if (Math.abs(tangent.dot(up)) > 0.99) up = new THREE.Vector3(1, 0, 0);
+    const binormal = new THREE.Vector3().crossVectors(tangent, up).normalize();
+    const normal = new THREE.Vector3().crossVectors(binormal, tangent).normalize();
+    const cos = Math.cos(twistAngle), sin = Math.sin(twistAngle);
+    const ribbonDir = new THREE.Vector3(binormal.x*cos+normal.x*sin, binormal.y*cos+normal.y*sin, binormal.z*cos+normal.z*sin).normalize();
+    const w = halfWidth * (0.6 + 0.4 * Math.exp(-Math.pow(t - 0.57, 2) / 0.1));
+    positions.push(point.x-ribbonDir.x*w, point.y-ribbonDir.y*w, point.z-ribbonDir.z*w, point.x+ribbonDir.x*w, point.y+ribbonDir.y*w, point.z+ribbonDir.z*w);
+    tAttrs.push(t, t); edgeAttrs.push(0.0, 1.0);
+    if (i < segments) { const base = i*2; indices.push(base,base+1,base+2,base+1,base+3,base+2); }
+  }
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+  geo.setAttribute('aT', new THREE.Float32BufferAttribute(tAttrs, 1));
+  geo.setAttribute('aEdge', new THREE.Float32BufferAttribute(edgeAttrs, 1));
+  geo.setIndex(indices); geo.computeVertexNormals();
+  return geo;
+}
+
+let ribbonMesh = null, ribbonShellMesh = null, ribbonMat = null;
+if (part1Style === 'ribbon') {
+  const ribbonGeo = buildRibbonGeometry(wristCurve, 120, 0.06);
+  ribbonMat = new THREE.ShaderMaterial({
+    uniforms: { uProgress: { value: 1.0 } },
+    vertexShader: `attribute float aT;attribute float aEdge;varying float vT;varying float vEdge;varying vec3 vNormal;void main(){vT=aT;vEdge=aEdge;vNormal=normalize(normalMatrix*normal);gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0);}`,
+    fragmentShader: `uniform float uProgress;varying float vT;varying float vEdge;varying vec3 vNormal;void main(){if(vT>uProgress)discard;float speed=exp(-pow(vT-0.57,2.0)/0.08);vec3 color;if(speed<0.5){float s=speed/0.5;color=vec3(s,0.75+s*0.15,0.2*(1.0-s));}else{float s=(speed-0.5)/0.5;color=vec3(1.0,0.9-s*0.7,0.0);}float light=0.5+0.5*abs(dot(vNormal,vec3(0.3,0.8,0.5)));float alpha=smoothstep(0.0,0.7,vEdge);gl_FragColor=vec4(color*light,alpha);}`,
+    transparent: true, side: THREE.DoubleSide, depthTest: true, depthWrite: false
+  });
+  ribbonMesh = new THREE.Mesh(ribbonGeo, ribbonMat);
+  ribbonMesh.renderOrder = 1;
+  scene.add(ribbonMesh);
+
+  const ribbonShellGeo = buildRibbonGeometry(wristCurve, 120, 0.065);
+  const ribbonShellMat = new THREE.ShaderMaterial({
+    vertexShader: `attribute float aEdge;varying float vEdge;void main(){vEdge=aEdge;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0);}`,
+    fragmentShader: `varying float vEdge;void main(){float alpha=smoothstep(0.0,0.7,vEdge)*0.2;gl_FragColor=vec4(0.53,0.53,0.53,alpha);}`,
+    transparent: true, side: THREE.DoubleSide, depthWrite: false
+  });
+  ribbonShellMesh = new THREE.Mesh(ribbonShellGeo, ribbonShellMat);
+  scene.add(ribbonShellMesh);
+}
+
+// Apply Part1 style choice
+if (part1Style === 'current') {
+  shellMesh.visible = false;
+  fillMesh.visible = true;
+} else if (part1Style === 'ribbon') {
+  shellMesh.visible = false;
+  fillMesh.visible = false;
+  // ribbon meshes already added above
+} else {
+  // 'tube' default
+  shellMesh.visible = true;
+  fillMesh.visible = true;
+}
+
+// ============ Hit Markers (matching Part1 choices) ============
+const hitMarkers = {};
+
+// Ring marker
+const ringGeo = new THREE.TorusGeometry(0.055, 0.008, 12, 32);
+const ringMat = new THREE.MeshBasicMaterial({ color: 0xccff00, transparent: true, opacity: 0.8 });
+hitMarkers.ring = new THREE.Mesh(ringGeo, ringMat);
+hitMarkers.ring.position.copy(hitPoint);
+hitMarkers.ring.visible = false;
+scene.add(hitMarkers.ring);
+
+// Cross marker
+const crossGroup = new THREE.Group();
+const crossMat = new THREE.LineBasicMaterial({ color: 0xccff00, transparent: true, opacity: 0.85 });
+const armLen = 0.06, gap = 0.02;
+[[[-armLen,0,0],[-gap,0,0]],[[gap,0,0],[armLen,0,0]],[[0,-armLen,0],[0,-gap,0]],[[0,gap,0],[0,armLen,0]]].forEach(([a,b]) => {
+  const g = new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(...a), new THREE.Vector3(...b)]);
+  crossGroup.add(new THREE.Line(g, crossMat));
+});
+crossGroup.add(new THREE.Mesh(new THREE.TorusGeometry(0.05, 0.004, 8, 24), new THREE.MeshBasicMaterial({ color: 0xccff00, transparent: true, opacity: 0.7 })));
+crossGroup.position.copy(hitPoint);
+hitMarkers.cross = crossGroup;
+crossGroup.visible = false;
+scene.add(crossGroup);
+
+// Star marker
+const starGroup = new THREE.Group();
+const starLineMat = new THREE.LineBasicMaterial({ color: 0xccff00, transparent: true, opacity: 0.85 });
+for (let i = 0; i < 6; i++) {
+  const angle = (i/6)*Math.PI*2, cos=Math.cos(angle), sin=Math.sin(angle);
+  const g = new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(cos*0.015,sin*0.015,0), new THREE.Vector3(cos*0.065,sin*0.065,0)]);
+  starGroup.add(new THREE.Line(g, starLineMat));
+}
+starGroup.position.copy(hitPoint);
+hitMarkers.star = starGroup;
+starGroup.visible = false;
+scene.add(starGroup);
+
+// Ball marker (tennis ball stays at hit point)
+const hitBallGeo2 = new THREE.SphereGeometry(0.035, 24, 24);
+const hitBallMat2 = new THREE.MeshPhongMaterial({ color: 0xccff00, shininess: 60 });
+hitMarkers.ball = new THREE.Mesh(hitBallGeo2, hitBallMat2);
+hitMarkers.ball.position.copy(hitPoint);
+hitMarkers.ball.visible = false;
+scene.add(hitMarkers.ball);
+
+// Set hitMarker to point to the active marker for animation loop
+hitMarker = hitMarkers[part1Marker] || null;
+if (part1Marker === 'none') hitMarker = null;
+
+// Tennis ball
+const ballGeo = new THREE.SphereGeometry(0.033, 16, 16);
+const ballMat = new THREE.MeshPhongMaterial({ color: 0xccff00, shininess: 60 });
+tennisBall = new THREE.Mesh(ballGeo, ballMat);
+tennisBall.visible = false;
+scene.add(tennisBall);
+
+// Human model
+const loader = new OBJLoader();
+loader.load('models/trophy-pose-low.obj', (obj) => {
+  const mat = new THREE.MeshPhongMaterial({ color: 0x9a9a9a, transparent: true, opacity: 0.85, shininess: 40 });
+  obj.traverse((child) => { if (child.isMesh) child.material = mat; });
+  obj.position.set(0.030, 0.000, 0.220);
+  obj.scale.set(0.680, 0.680, 0.680);
+  obj.rotation.set(0.010, 0.000, 0.020);
+  scene.add(obj);
+});
+
+// ============ Camera Schemes ============
+function overviewPos(center) { return new THREE.Vector3(center.x + 0.3, center.y + 0.1, center.z + 2.8); }
+function overviewLook(center) { return center.clone().add(new THREE.Vector3(0, 0.15, 0)); }
+function blendToOverview(rawCamera, t, center, blendStart) {
+  if (t <= blendStart) return rawCamera;
+  const blend = (t - blendStart) / (1 - blendStart);
+  const ease = blend * blend * (3 - 2 * blend);
+  const overPos = overviewPos(center);
+  const overLook = overviewLook(center);
+  return {
+    pos: new THREE.Vector3().lerpVectors(rawCamera.pos, overPos, ease),
+    look: new THREE.Vector3().lerpVectors(rawCamera.look, overLook, ease)
+  };
+}
+
+const cameraSchemes = {
+  orbit: (t, center) => {
+    const angle = -Math.PI/2 + t * Math.PI * 1.2;
+    const r = 1.8 - t * 0.3;
+    const y = 1.2 - t * 0.2;
+    const raw = {
+      pos: new THREE.Vector3(center.x + r*Math.cos(angle), center.y + y, center.z + r*Math.sin(angle)),
+      look: center.clone().add(new THREE.Vector3(0, 0.2 * (1-t), 0))
+    };
+    return blendToOverview(raw, t, center, 0.75);
+  },
+  pushin: (t, center, hp) => {
+    const startPos = new THREE.Vector3(center.x - 2.5, center.y + 1.5, center.z + 2);
+    const endPos = hp.clone().add(new THREE.Vector3(0.3, 0.15, 0.4));
+    const pushT = Math.min(t / 0.7, 1);
+    const ease = pushT * pushT;
+    const raw = {
+      pos: new THREE.Vector3().lerpVectors(startPos, endPos, ease),
+      look: new THREE.Vector3().lerpVectors(center, hp, ease * 0.8 + 0.2)
+    };
+    return blendToOverview(raw, t, center, 0.7);
+  },
+  bullet: (t, center, hp) => {
+    let angle, r, y, lookTarget;
+    if (t < 0.35) {
+      angle = -Math.PI * 0.6; r = 2.0; y = 1.0; lookTarget = center.clone();
+    } else if (t < 0.6) {
+      const lt = (t - 0.35) / 0.25;
+      angle = -Math.PI * 0.6 + lt * Math.PI * 1.5; r = 1.5; y = 0.8 + lt * 0.3; lookTarget = hp.clone();
+    } else {
+      const lt = (t - 0.6) / 0.15;
+      angle = -Math.PI * 0.6 + Math.PI * 1.5 + Math.min(lt, 1) * 0.3;
+      r = 1.5 + Math.min(lt, 1) * 0.3; y = 1.1; lookTarget = hp.clone();
+    }
+    const raw = {
+      pos: new THREE.Vector3(center.x + r*Math.cos(angle), center.y + y, center.z + r*Math.sin(angle)),
+      look: lookTarget
+    };
+    return blendToOverview(raw, t, center, 0.75);
+  },
+  autocut: (t, center, hp) => {
+    let raw;
+    if (t < 0.25) {
+      raw = { pos: new THREE.Vector3(center.x + 2, center.y + 0.3, center.z), look: center.clone().add(new THREE.Vector3(0, 0.3, 0)) };
+    } else if (t < 0.5) {
+      raw = { pos: new THREE.Vector3(center.x, center.y + 0.5, center.z + 2), look: hp.clone().lerp(center, 0.3) };
+    } else {
+      const lt = (t - 0.5) / 0.25;
+      raw = { pos: new THREE.Vector3(center.x + Math.min(lt,1)*0.3, center.y + 2.5, center.z + 0.3), look: hp.clone() };
+    }
+    return blendToOverview(raw, t, center, 0.75);
+  },
+  shoulder: (t, center, hp) => {
+    const sway = Math.sin(t * Math.PI * 2) * 0.02;
+    const camPos = new THREE.Vector3(
+      shoulderPos.x - 0.6 + sway,
+      shoulderPos.y + 1.0 + t * 0.1,
+      shoulderPos.z - 1.8 + t * 0.3
+    );
+    const lookTarget = new THREE.Vector3().lerpVectors(center, hp, Math.min(t / 0.7, 1));
+    const raw = { pos: camPos, look: lookTarget };
+    return blendToOverview(raw, t, center, 0.7);
+  }
+};
+
+// ============ Ball Animation ============
+const BALL_HIT_CAMT = 0.317;
+const BALL_FLY_END_CAMT = 0.55;
+const BALL_TOSS_START = new THREE.Vector3(0.05, 2.8, 0.1);
+const BALL_FLY_END = new THREE.Vector3(0.3, 0.6, 5.5);
+
+function updateTennisBall(camT) {
+  if (!tennisBall) return;
+  if (!isPlaying) { tennisBall.visible = false; return; }
+  if (camT <= 0) { tennisBall.visible = false; return; }
+
+  if (camT < BALL_HIT_CAMT) {
+    tennisBall.visible = true;
+    const t = camT / BALL_HIT_CAMT;
+    const eased = t * t;
+    tennisBall.position.lerpVectors(BALL_TOSS_START, hitPoint, eased);
+    tennisBall.scale.setScalar(1);
+  } else if (camT < BALL_FLY_END_CAMT) {
+    // Apply Part1 ballFly choice: if no ball fly, hide after hit
+    if (!part1BallFly) { tennisBall.visible = false; return; }
+    tennisBall.visible = true;
+    const t = (camT - BALL_HIT_CAMT) / (BALL_FLY_END_CAMT - BALL_HIT_CAMT);
+    const eased = 1 - Math.pow(1 - t, 5);
+    tennisBall.position.lerpVectors(hitPoint, BALL_FLY_END, eased);
+    tennisBall.scale.setScalar(1 - eased * 0.6);
+  } else {
+    tennisBall.visible = false;
+  }
+}
+
+// ============ Speed Display ============
+const PEAK_SPEED = 189, MIN_SPEED = 35;
+function getSpeedAtT(t) {
+  const peak = Math.exp(-Math.pow(t - 0.57, 2) / 0.03);
+  return MIN_SPEED + (PEAK_SPEED - MIN_SPEED) * peak;
+}
+function getTrajectoryColor(t) {
+  const speedNorm = Math.exp(-Math.pow(t - 0.57, 2) / 0.08);
+  let r, g, b;
+  if (speedNorm < 0.5) { const s = speedNorm / 0.5; r = s; g = 0.75 + s * 0.15; b = 0.2 * (1 - s); }
+  else { const s = (speedNorm - 0.5) / 0.5; r = 1.0; g = 0.9 - s * 0.7; b = 0.0; }
+  return `rgb(${Math.round(r*255)}, ${Math.round(g*255)}, ${Math.round(b*255)})`;
+}
+
+function updateSpeedDisplay(camT) {
+  const el = document.getElementById('speed-display');
+  const valEl = document.getElementById('speed-value');
+  if (!el || !valEl) return;
+
+  if (!isPlaying && animProgress >= 1) {
+    valEl.textContent = PEAK_SPEED;
+    valEl.style.color = getTrajectoryColor(0.57);
+    el.classList.add('peak');
+    el.style.opacity = '1';
+    return;
+  }
+  if (!isPlaying) { el.style.opacity = '0'; return; }
+
+  const hpt = hitParamT || 0.57;
+  let tOnCurve;
+  if (camT <= BALL_HIT_CAMT) {
+    tOnCurve = hpt * (camT / BALL_HIT_CAMT);
+  } else {
+    const BALL_FLY_RESUME = BALL_HIT_CAMT + (BALL_FLY_END_CAMT - BALL_HIT_CAMT) * 0.2;
+    if (camT < BALL_FLY_RESUME) { tOnCurve = hpt; }
+    else { const remaining = (camT - BALL_FLY_RESUME) / (0.65 - BALL_FLY_RESUME); tOnCurve = hpt + (1.0 - hpt) * Math.min(remaining, 1.0); }
+  }
+  el.style.opacity = '1';
+  const speed = Math.round(getSpeedAtT(tOnCurve));
+  valEl.textContent = speed;
+  valEl.style.color = getTrajectoryColor(tOnCurve);
+  if (speed >= PEAK_SPEED - 5) { el.classList.add('peak'); } else { el.classList.remove('peak'); }
+}
+
+// ============ Camera Control ============
+function setCameraPreset(key) {
+  currentAngle = key;
+  const cam = cameraSchemes[key](1, sceneCenter, hitPoint);
+  camera.position.copy(cam.pos);
+  camera.lookAt(cam.look);
+  fillMat.uniforms.uProgress.value = 1.0;
+  animProgress = 1; isPlaying = false;
+  document.getElementById('card-overlay').classList.add('show');
+  document.getElementById('card-chart-area').classList.add('show');
+  document.getElementById('play-overlay').classList.remove('hidden');
+}
+
+function playAnimation() {
+  animProgress = 0;
+  fillMat.uniforms.uProgress.value = 0.0;
+  if (ribbonMat) ribbonMat.uniforms.uProgress.value = 0.0;
+  isPlaying = true;
+  lastTime = performance.now();
+  document.getElementById('play-overlay').classList.add('hidden');
+  document.getElementById('card-overlay').classList.remove('show');
+  document.getElementById('card-chart-area').classList.remove('show');
+}
+
+// ============ Animation Loop ============
+function animLoop(time) {
+  requestAnimationFrame(animLoop);
+  if (!renderer) return;
+
+  if (isPlaying) {
+    const dt = time - lastTime;
+    let speed = 1;
+    if (currentAngle === 'bullet') {
+      const moveRatio = MOVE_DURATION / TOTAL_DURATION;
+      const normP = animProgress / moveRatio;
+      if (normP > 0.35 && normP < 0.6) speed = 0.3;
+      else speed = 1.2;
+    }
+    const curCamT = Math.min(animProgress / (MOVE_DURATION / TOTAL_DURATION), 1);
+    if (curCamT >= BALL_HIT_CAMT * 0.85 && curCamT <= BALL_HIT_CAMT + 0.06) {
+      speed *= 0.2;
+    }
+    animProgress += (dt / TOTAL_DURATION) * speed;
+    if (animProgress >= 1) {
+      animProgress = 1; isPlaying = false;
+      fillMat.uniforms.uProgress.value = 1.0;
+      if (ribbonMat) ribbonMat.uniforms.uProgress.value = 1.0;
+      document.getElementById('play-overlay').classList.remove('hidden');
+      document.getElementById('card-overlay').classList.add('show');
+      document.getElementById('card-chart-area').classList.add('show');
+      hideViewLabel();
+    }
+  }
+
+  const moveRatio = MOVE_DURATION / TOTAL_DURATION;
+  const camT = Math.min(animProgress / moveRatio, 1);
+
+  // Fill progress
+  const BALL_FLY_RESUME_CAMT = BALL_HIT_CAMT + (BALL_FLY_END_CAMT - BALL_HIT_CAMT) * 0.2;
+  if (isPlaying) {
+    let fillValue;
+    const hpt = hitParamT || 0.57;
+    if (camT <= BALL_HIT_CAMT) {
+      fillValue = hpt * (camT / BALL_HIT_CAMT);
+    } else if (camT < BALL_FLY_RESUME_CAMT) {
+      fillValue = hpt;
+    } else {
+      const remaining = (camT - BALL_FLY_RESUME_CAMT) / (0.65 - BALL_FLY_RESUME_CAMT);
+      fillValue = hpt + (1.0 - hpt) * Math.min(remaining, 1.0);
+    }
+    fillMat.uniforms.uProgress.value = fillValue;
+    if (ribbonMat) ribbonMat.uniforms.uProgress.value = fillValue;
+  } else {
+    fillMat.uniforms.uProgress.value = 1.0;
+    if (ribbonMat) ribbonMat.uniforms.uProgress.value = 1.0;
+  }
+
+  // Hit marker
+  if (hitMarker && part1Marker !== 'none') {
+    const pulse = 0.5 + 0.5 * Math.sin(time * 0.005);
+    const s = 0.9 + 0.15 * pulse;
+    if (isPlaying && camT >= BALL_FLY_RESUME_CAMT) {
+      hitMarker.visible = true;
+      hitMarker.scale.set(s, s, s);
+      if (hitMarker.material) hitMarker.material.opacity = 0.4 + 0.5 * pulse;
+      if (part1Marker === 'star') hitMarker.rotation.z = time * 0.001;
+    } else if (!isPlaying) {
+      hitMarker.visible = true;
+      hitMarker.scale.set(s, s, s);
+      if (hitMarker.material) hitMarker.material.opacity = 0.6 + 0.3 * pulse;
+      if (part1Marker === 'star') hitMarker.rotation.z = time * 0.001;
+    } else {
+      hitMarker.visible = false;
+    }
+  }
+
+  // Camera
+  const cam = cameraSchemes[currentAngle](camT, sceneCenter, hitPoint);
+  camera.position.copy(cam.pos);
+  camera.lookAt(cam.look);
+
+  // Autocut view label
+  if (currentAngle === 'autocut' && isPlaying) {
+    let viewLabel = '';
+    if (camT < 0.25) viewLabel = '正视';
+    else if (camT < 0.5) viewLabel = '侧视';
+    else viewLabel = '俯视';
+    showViewLabel(viewLabel);
+  } else if (currentAngle !== 'autocut') {
+    hideViewLabel();
+  }
+
+  updateTennisBall(camT);
+  updateSpeedDisplay(camT);
+
+  lastTime = time;
+  renderer.render(scene, camera);
+}
+
+function showViewLabel(text) {
+  let el = document.getElementById('autocut-view-label');
+  if (!el) {
+    el = document.createElement('div');
+    el.id = 'autocut-view-label';
+    el.style.cssText = 'position:absolute;top:10px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,0.6);color:#fff;font-size:12px;padding:3px 12px;border-radius:4px;pointer-events:none;transition:opacity 0.3s;z-index:10;';
+    document.querySelector('.video-wrap').appendChild(el);
+  }
+  el.textContent = text;
+  el.style.opacity = '1';
+}
+function hideViewLabel() {
+  const el = document.getElementById('autocut-view-label');
+  if (el) el.style.opacity = '0';
+}
+
+// Init scene
+setCameraPreset('orbit');
+updateOverlayChart();
+updateCardSubs();
+requestAnimationFrame(animLoop);
+
+// ============ Chart Drawing ============
+function drawChart(ctx, w, h, key) {
+  ctx.clearRect(0,0,w,h);
+  if (key === 'radar') drawRadar(ctx,w,h);
+  else if (key === 'speed_bar') drawBar(ctx,w,h);
+  else if (key === 'heartrate') drawHR(ctx,w,h);
+  else if (key === 'hands') drawPie(ctx,w,h,[{l:'正手',v:89,c:'#ff6b00'},{l:'反手',v:56,c:'#30b0c7'}]);
+  else if (key === 'stroke') drawPie(ctx,w,h,[{l:'上旋',v:67,c:'#34c759'},{l:'切削',v:34,c:'#ff9500'},{l:'其他',v:15,c:'#8e8e93'}]);
+}
+
+function drawRadar(ctx,w,h) {
+  const cx=w/2, cy=h/2, r=Math.min(cx,cy)-10;
+  const dims=['爆发','对抗','敏捷','稳定','耐力'], vals=[0.8,0.75,0.9,0.7,0.65], n=dims.length;
+  ctx.strokeStyle='#555'; ctx.lineWidth=0.5;
+  for (let ring=1;ring<=4;ring++) {
+    ctx.beginPath();
+    for (let i=0;i<=n;i++) { const a=(Math.PI*2*i)/n-Math.PI/2, rr=r*ring/4; i===0?ctx.moveTo(cx+rr*Math.cos(a),cy+rr*Math.sin(a)):ctx.lineTo(cx+rr*Math.cos(a),cy+rr*Math.sin(a)); }
+    ctx.stroke();
+  }
+  ctx.beginPath();
+  for (let i=0;i<=n;i++) { const a=(Math.PI*2*(i%n))/n-Math.PI/2, rr=r*0.85; i===0?ctx.moveTo(cx+rr*Math.cos(a),cy+rr*Math.sin(a)):ctx.lineTo(cx+rr*Math.cos(a),cy+rr*Math.sin(a)); }
+  ctx.strokeStyle='#4fc3f7'; ctx.lineWidth=1.5; ctx.stroke();
+  ctx.beginPath();
+  for (let i=0;i<=n;i++) { const a=(Math.PI*2*(i%n))/n-Math.PI/2, rr=r*vals[i%n]; i===0?ctx.moveTo(cx+rr*Math.cos(a),cy+rr*Math.sin(a)):ctx.lineTo(cx+rr*Math.cos(a),cy+rr*Math.sin(a)); }
+  ctx.fillStyle='rgba(255,160,0,0.4)'; ctx.fill();
+  ctx.strokeStyle='#ff9500'; ctx.lineWidth=1.5; ctx.stroke();
+  ctx.fillStyle='#aaa'; ctx.font=`${Math.max(8,w*0.07)}px sans-serif`; ctx.textAlign='center';
+  for (let i=0;i<n;i++) { const a=(Math.PI*2*i)/n-Math.PI/2; ctx.fillText(dims[i],cx+(r+8)*Math.cos(a),cy+(r+8)*Math.sin(a)+3); }
+}
+
+function drawBar(ctx,w,h) {
+  const speeds=[178,185,172,189,165,180,175,182,169,186], barW=(w-20)/speeds.length-2, maxV=200, baseY=h-8;
+  speeds.forEach((v,i) => {
+    const barH=(v/maxV)*(h-16), x=10+i*(barW+2);
+    const g=ctx.createLinearGradient(x,baseY-barH,x,baseY);
+    g.addColorStop(0,'#ff6b00'); g.addColorStop(1,'#ff9500');
+    ctx.fillStyle=g; ctx.fillRect(x,baseY-barH,barW,barH);
+  });
+}
+
+function drawHR(ctx,w,h) {
+  const pts=[]; for(let i=0;i<40;i++) pts.push(120+Math.sin(i*0.4)*20+(i>30?-15:0));
+  const maxV=160,minV=80,px=4,py=4;
+  ctx.beginPath();
+  pts.forEach((v,i)=>{ const x=px+(i/(pts.length-1))*(w-px*2), y=py+(1-(v-minV)/(maxV-minV))*(h-py*2); i===0?ctx.moveTo(x,y):ctx.lineTo(x,y); });
+  ctx.strokeStyle='#fff'; ctx.lineWidth=1.2; ctx.stroke();
+  ctx.lineTo(w-px,h-py); ctx.lineTo(px,h-py);
+  const g=ctx.createLinearGradient(0,0,0,h);
+  g.addColorStop(0,'rgba(255,255,255,0.15)'); g.addColorStop(1,'rgba(255,255,255,0)');
+  ctx.fillStyle=g; ctx.fill();
+}
+
+function drawPie(ctx,w,h,data) {
+  const cx=w/3,cy=h/2,r=Math.min(cx,cy)-4, total=data.reduce((s,d)=>s+d.v,0);
+  let startA=-Math.PI/2;
+  data.forEach(d=>{ const a=(d.v/total)*Math.PI*2; ctx.beginPath(); ctx.moveTo(cx,cy); ctx.arc(cx,cy,r,startA,startA+a); ctx.fillStyle=d.c; ctx.fill(); startA+=a; });
+  ctx.beginPath(); ctx.arc(cx,cy,r*0.45,0,Math.PI*2); ctx.fillStyle='#3a3a3c'; ctx.fill();
+  ctx.font='9px sans-serif';
+  data.forEach((d,i)=>{ const lx=w*0.58,ly=h*0.3+i*18; ctx.fillStyle=d.c; ctx.fillRect(lx,ly,8,8); ctx.fillStyle='#ccc'; ctx.textAlign='left'; ctx.fillText(`${d.l} ${Math.round(d.v/total*100)}%`,lx+12,ly+7); });
+}
+
+function updateOverlayChart() {
+  const el = document.getElementById('overlay-chart');
+  const p = el.parentElement;
+  el.width = p.offsetWidth * 2; el.height = p.offsetHeight * 2;
+  const ctx = el.getContext('2d'); ctx.scale(2, 2);
+  drawChart(ctx, p.offsetWidth, p.offsetHeight, selectedChart);
+}
+
+function updateCardSubs() {
+  const c = document.getElementById('card-subs');
+  c.innerHTML = '';
+  selectedSubs.forEach(key => {
+    const d = subDataList.find(x => x.key === key);
+    if (!d) return;
+    const el = document.createElement('div');
+    el.className = 'card-sub';
+    el.innerHTML = `<div class="sl">${d.label}</div><div class="sv">${d.value}</div><div class="su">${d.unit}</div>`;
+    c.appendChild(el);
+  });
+}
+
+// ============ Free Play Panel Controls ============
+// Angle buttons
+document.querySelectorAll('#fp-angle-btns button').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('#fp-angle-btns button').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    setCameraPreset(btn.dataset.angle);
+  });
+});
+
+// Data pill buttons (max 3)
+document.querySelectorAll('#fp-data-btns button').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const key = btn.dataset.pill;
+    if (selectedSubs.includes(key)) {
+      selectedSubs = selectedSubs.filter(k => k !== key);
+      btn.classList.remove('pill-selected');
+    } else if (selectedSubs.length >= 3) {
+      return; // max 3
+    } else {
+      selectedSubs.push(key);
+      btn.classList.add('pill-selected');
+    }
+    updateCardSubs();
+  });
+});
+
+// Chart buttons
+document.querySelectorAll('#fp-chart-btns button').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('#fp-chart-btns button').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    selectedChart = btn.dataset.chart;
+    updateOverlayChart();
+  });
+});
+
+// Main play overlay
+document.getElementById('play-overlay').addEventListener('click', () => { playAnimation(); });
+
+// ============ Survey Logic ============
+const STEPS = [
+  {
+    id: 'camera', title: '第 1 题：运镜选择',
+    desc: '视频录制时，镜头会以不同方式移动来展示你的发球动作。请切换对比五种运镜方式，选择你最喜欢的。',
+    buttons: [
+      { label: '环绕聚焦', value: 'orbit' },
+      { label: '跟随推进', value: 'pushin' },
+      { label: '子弹时间', value: 'bullet' },
+      { label: '多机位剪辑', value: 'autocut' },
+      { label: '肩上视角', value: 'shoulder' },
+    ],
+    question: '你更喜欢哪种运镜方式？',
+    options: [
+      { value: 'orbit', text: '环绕聚焦', desc: '镜头围绕轨迹旋转' },
+      { value: 'pushin', text: '跟随推进', desc: '镜头从远处推近击球点' },
+      { value: 'bullet', text: '子弹时间', desc: '击球瞬间慢动作环绕' },
+      { value: 'autocut', text: '多机位剪辑', desc: '自动切换正视/侧视/俯视' },
+      { value: 'shoulder', text: '肩上视角', desc: '模拟第一人称视角' },
+    ],
+    type: 'single',
+    applyBtn: (v) => { setCameraPreset(v); playAnimation(); },
+  },
+  {
+    id: 'data', title: '第 2 题：数据展示',
+    desc: '视频结束后会展示运动数据。最多可选择3项你最想看到的数据。',
+    buttons: [
+      { label: '最大发球速度', value: 'max_serve' },
+      { label: '最大击球速度', value: 'max_hit' },
+      { label: '最长连拍', value: 'max_rally' },
+      { label: '平均心率', value: 'avg_hr' },
+      { label: '最大拍速', value: 'max_speed' },
+      { label: '平均拍速', value: 'avg_speed' },
+    ],
+    question: '你最想在视频中看到哪些数据？（最多3项）',
+    options: [
+      { value: 'max_serve', text: '最大发球速度' },
+      { value: 'max_hit', text: '最大击球速度' },
+      { value: 'max_rally', text: '最长连拍' },
+      { value: 'avg_hr', text: '平均心率' },
+      { value: 'max_speed', text: '最大拍速' },
+      { value: 'avg_speed', text: '平均拍速' },
+    ],
+    type: 'multi',
+    maxSelect: 3,
+    applyBtn: () => { updateCardSubs(); },
+  },
+  {
+    id: 'chart', title: '第 3 题：图表展示',
+    desc: '视频右侧可以叠加一个图表来展示综合表现。请切换对比五种图表。',
+    buttons: [
+      { label: '训练表现图', value: 'radar' },
+      { label: '心率曲线', value: 'heartrate' },
+      { label: '速度柱状图', value: 'speed_bar' },
+      { label: '正反手分布', value: 'hands' },
+      { label: '击球姿势分布', value: 'stroke' },
+    ],
+    question: '你更喜欢哪种图表展示？',
+    options: [
+      { value: 'radar', text: '训练表现图', desc: '五维雷达图' },
+      { value: 'heartrate', text: '心率曲线', desc: '实时心率变化' },
+      { value: 'speed_bar', text: '速度柱状图', desc: '每球速度对比' },
+      { value: 'hands', text: '正反手分布', desc: '正反手比例饼图' },
+      { value: 'stroke', text: '击球姿势分布', desc: '上旋/切削占比' },
+    ],
+    type: 'single',
+    applyBtn: (v) => { selectedChart = v; updateOverlayChart(); },
+  },
+  {
+    id: 'share', title: '第 4 题：分享意愿',
+    desc: '如果你的手表能生成这样一段发球轨迹视频，你会想分享吗？',
+    buttons: [],
+    question: '你的分享意愿？',
+    options: [
+      { value: 'very', text: '非常想分享', desc: '太酷了肯定发朋友圈' },
+      { value: 'maybe', text: '看情况', desc: '打出好球时会想分享' },
+      { value: 'unlikely', text: '大概率不会', desc: '看看就好' },
+      { value: 'never', text: '完全不会', desc: '对分享运动数据没兴趣' },
+    ],
+    type: 'single',
+    followup: {
+      question: '你最可能分享到哪里？（可多选）',
+      options: [
+        { value: 'moments', text: '微信朋友圈' },
+        { value: 'wechat', text: '微信群聊/私聊' },
+        { value: 'social', text: '小红书/抖音' },
+        { value: 'community', text: '网球社区' },
+        { value: 'save', text: '只保存不分享' },
+      ],
+      type: 'multi'
+    },
+    applyBtn: () => {},
+  },
+];
+
+let currentStep = 0;
+let editingFromSummary = false;
+const answers = {};
+
+function renderStep(stepIdx) {
+  const panel = document.getElementById('survey-panel');
+  const step = STEPS[stepIdx];
+  const saved = answers[step.id] || {};
+
+  let html = '';
+  // Progress
+  html += `<div class="survey-progress"><div class="step-dots">`;
+  for (let i = 0; i < STEPS.length; i++) {
+    const cls = i < stepIdx ? 'done' : (i === stepIdx ? 'current' : '');
+    html += `<div class="step-dot ${cls}"></div>`;
+  }
+  html += `</div><span class="step-label">${stepIdx+1}/${STEPS.length}</span></div>`;
+
+  // Title & desc
+  html += `<div class="survey-title">${step.title}</div>`;
+  html += `<div class="survey-desc">${step.desc}</div>`;
+
+  // Operation buttons
+  if (step.buttons.length > 0) {
+    html += `<div class="survey-btns" id="step-btns">`;
+    if (step.type === 'multi' && step.id === 'data') {
+      // Data pills: multi-select buttons
+      step.buttons.forEach(b => {
+        const isSelected = (saved.choices || selectedSubs).includes(b.value);
+        html += `<button data-val="${b.value}" class="${isSelected ? 'pill-selected' : ''}">${b.label}</button>`;
+      });
+    } else {
+      step.buttons.forEach(b => {
+        const active = saved.btnValue === b.value ? ' active' : '';
+        html += `<button data-val="${b.value}"${active}>${b.label}</button>`;
+      });
+    }
+    html += `</div>`;
+  }
+
+  // Question
+  html += `<div class="survey-question">${step.question}</div>`;
+  html += `<div class="survey-options" id="step-options">`;
+  if (step.type === 'multi' && !step.followup) {
+    // Multi-select options (data step)
+    step.options.forEach(opt => {
+      const sel = (saved.choices || selectedSubs).includes(opt.value) ? ' selected' : '';
+      html += `<div class="survey-option${sel}" data-val="${opt.value}"><div class="checkbox"></div><span class="opt-text">${opt.text}${opt.desc ? '<div class="opt-desc">'+opt.desc+'</div>' : ''}</span></div>`;
+    });
+  } else {
+    // Single-select options
+    step.options.forEach(opt => {
+      const sel = saved.choice === opt.value ? ' selected' : '';
+      html += `<div class="survey-option${sel}" data-val="${opt.value}"><div class="radio"></div><span class="opt-text">${opt.text}${opt.desc ? '<div class="opt-desc">'+opt.desc+'</div>' : ''}</span></div>`;
+    });
+  }
+  html += `</div>`;
+
+  // Followup (share step)
+  if (step.followup) {
+    const showFollowup = saved.choice && saved.choice !== 'never';
+    html += `<div id="followup-wrap" style="display:${showFollowup ? 'block' : 'none'}">`;
+    html += `<div class="survey-question">${step.followup.question}</div>`;
+    html += `<div class="survey-options" id="step-followup">`;
+    step.followup.options.forEach(opt => {
+      const sel = (saved.followup || []).includes(opt.value) ? ' selected' : '';
+      html += `<div class="survey-option${sel}" data-val="${opt.value}"><div class="checkbox"></div><span class="opt-text">${opt.text}</span></div>`;
+    });
+    html += `</div></div>`;
+  }
+
+  // Comment
+  html += `<textarea class="survey-textarea" id="step-comment" placeholder="你的想法或补充（选填）">${saved.comment || ''}</textarea>`;
+
+  // Nav
+  html += `<div class="survey-nav">`;
+  if (editingFromSummary) {
+    html += `<button class="btn-submit" id="btn-back-summary">返回汇总</button>`;
+  } else {
+    if (stepIdx > 0) html += `<button class="btn-prev" id="btn-prev">上一题</button>`;
+    if (stepIdx < STEPS.length - 1) html += `<button class="btn-next" id="btn-next">下一题</button>`;
+    else html += `<button class="btn-submit" id="btn-next">查看汇总</button>`;
+  }
+  html += `</div>`;
+
+  panel.innerHTML = html;
+
+  // 数据题：如果还没有答案，用当前默认选中的 selectedSubs 初始化
+  if (step.type === 'multi' && step.id === 'data' && !answers[step.id]) {
+    answers[step.id] = { choices: [...selectedSubs] };
+  }
+
+  // Bind events
+  if (step.type === 'multi' && step.id === 'data') {
+    // Data step: multi-select buttons and options
+    panel.querySelectorAll('#step-btns button').forEach(btn => {
+      btn.addEventListener('click', () => {
+        if (!answers[step.id]) answers[step.id] = { choices: [...selectedSubs] };
+        const choices = answers[step.id].choices;
+        const val = btn.dataset.val;
+        if (choices.includes(val)) {
+          answers[step.id].choices = choices.filter(k => k !== val);
+          btn.classList.remove('pill-selected');
+        } else if (choices.length >= step.maxSelect) {
+          return;
+        } else {
+          answers[step.id].choices.push(val);
+          btn.classList.add('pill-selected');
+        }
+        selectedSubs = [...answers[step.id].choices];
+        step.applyBtn();
+        // Sync option checkboxes
+        panel.querySelectorAll('#step-options .survey-option').forEach(o => {
+          o.classList.toggle('selected', answers[step.id].choices.includes(o.dataset.val));
+        });
+      });
+    });
+    panel.querySelectorAll('#step-options .survey-option').forEach(opt => {
+      opt.addEventListener('click', () => {
+        if (!answers[step.id]) answers[step.id] = { choices: [...selectedSubs] };
+        const choices = answers[step.id].choices;
+        const val = opt.dataset.val;
+        if (choices.includes(val)) {
+          answers[step.id].choices = choices.filter(k => k !== val);
+          opt.classList.remove('selected');
+        } else if (choices.length >= step.maxSelect) {
+          return;
+        } else {
+          answers[step.id].choices.push(val);
+          opt.classList.add('selected');
+        }
+        selectedSubs = [...answers[step.id].choices];
+        step.applyBtn();
+        // Sync buttons
+        panel.querySelectorAll('#step-btns button').forEach(b => {
+          b.classList.toggle('pill-selected', answers[step.id].choices.includes(b.dataset.val));
+        });
+      });
+    });
+  } else {
+    // Single-select buttons (camera, chart steps)
+    panel.querySelectorAll('#step-btns button').forEach(btn => {
+      btn.addEventListener('click', () => {
+        panel.querySelectorAll('#step-btns button').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        step.applyBtn(btn.dataset.val);
+        if (!answers[step.id]) answers[step.id] = {};
+        answers[step.id].btnValue = btn.dataset.val;
+        // Auto-select matching option
+        const matchOpt = panel.querySelector(`#step-options .survey-option[data-val="${btn.dataset.val}"]`);
+        if (matchOpt) {
+          panel.querySelectorAll('#step-options .survey-option').forEach(o => o.classList.remove('selected'));
+          matchOpt.classList.add('selected');
+          answers[step.id].choice = btn.dataset.val;
+        }
+      });
+    });
+    panel.querySelectorAll('#step-options .survey-option').forEach(opt => {
+      opt.addEventListener('click', () => {
+        panel.querySelectorAll('#step-options .survey-option').forEach(o => o.classList.remove('selected'));
+        opt.classList.add('selected');
+        if (!answers[step.id]) answers[step.id] = {};
+        answers[step.id].choice = opt.dataset.val;
+        step.applyBtn(opt.dataset.val);
+        // Sync buttons
+        const matchBtn = panel.querySelector(`#step-btns button[data-val="${opt.dataset.val}"]`);
+        if (matchBtn) {
+          panel.querySelectorAll('#step-btns button').forEach(b => b.classList.remove('active'));
+          matchBtn.classList.add('active');
+          answers[step.id].btnValue = opt.dataset.val;
+        }
+        // Show/hide followup
+        const followupWrap = panel.querySelector('#followup-wrap');
+        if (followupWrap) {
+          followupWrap.style.display = opt.dataset.val !== 'never' ? 'block' : 'none';
+          if (opt.dataset.val === 'never') { answers[step.id].followup = []; }
+        }
+      });
+    });
+  }
+
+  // Followup multi-select
+  if (step.followup) {
+    panel.querySelectorAll('#step-followup .survey-option').forEach(opt => {
+      opt.addEventListener('click', () => {
+        opt.classList.toggle('selected');
+        if (!answers[step.id]) answers[step.id] = {};
+        if (!answers[step.id].followup) answers[step.id].followup = [];
+        const val = opt.dataset.val;
+        if (opt.classList.contains('selected')) {
+          if (!answers[step.id].followup.includes(val)) answers[step.id].followup.push(val);
+        } else {
+          answers[step.id].followup = answers[step.id].followup.filter(v => v !== val);
+        }
+      });
+    });
+  }
+
+  // Nav buttons
+  const btnBackSummary = panel.querySelector('#btn-back-summary');
+  if (btnBackSummary) btnBackSummary.addEventListener('click', () => {
+    saveCurrentComment();
+    editingFromSummary = false;
+    renderSummary();
+    document.querySelector('.survey-scroll').scrollTo({ top: document.getElementById('survey-panel').offsetTop - 16, behavior: 'smooth' });
+  });
+
+  const btnNext = panel.querySelector('#btn-next');
+  if (btnNext) btnNext.addEventListener('click', () => {
+    // 校验必选
+    const ans = answers[step.id];
+    if (step.type === 'multi' && step.id === 'data') {
+      if (!ans || !ans.choices || ans.choices.length === 0) { shakeBtn(btnNext); return; }
+    } else {
+      if (!ans || !ans.choice) { shakeBtn(btnNext); return; }
+    }
+    saveCurrentComment();
+    if (stepIdx < STEPS.length - 1) { currentStep++; renderStep(currentStep); }
+    else { renderSummary(); }
+    document.querySelector('.survey-scroll').scrollTo({ top: 0, behavior: 'smooth' });
+  });
+
+  const btnPrev = panel.querySelector('#btn-prev');
+  if (btnPrev) btnPrev.addEventListener('click', () => {
+    saveCurrentComment();
+    currentStep--; renderStep(currentStep);
+    document.querySelector('.survey-scroll').scrollTo({ top: 0, behavior: 'smooth' });
+  });
+}
+
+function shakeBtn(btn) {
+  btn.style.animation = 'none';
+  btn.offsetHeight;
+  btn.style.animation = 'shake 0.4s ease';
+  let tip = document.getElementById('required-tip');
+  if (!tip) {
+    tip = document.createElement('div');
+    tip.id = 'required-tip';
+    tip.style.cssText = 'color:#f44336;font-size:12px;text-align:right;margin-top:6px;';
+    btn.parentElement.appendChild(tip);
+  }
+  tip.textContent = '请先选择一个选项';
+  setTimeout(() => { if (tip) tip.textContent = ''; }, 2500);
+}
+
+function saveCurrentComment() {
+  const step = STEPS[currentStep];
+  const textarea = document.getElementById('step-comment');
+  if (textarea) {
+    if (!answers[step.id]) answers[step.id] = {};
+    answers[step.id].comment = textarea.value;
+  }
+}
+
+// ============ Summary ============
+const LABELS = {
+  camera: { orbit: '环绕聚焦', pushin: '跟随推进', bullet: '子弹时间', autocut: '多机位剪辑', shoulder: '肩上视角' },
+  data: { max_serve: '最大发球速度', max_hit: '最大击球速度', max_rally: '最长连拍', avg_hr: '平均心率', max_speed: '最大拍速', avg_speed: '平均拍速' },
+  chart: { radar: '训练表现图', heartrate: '心率曲线', speed_bar: '速度柱状图', hands: '正反手分布', stroke: '击球姿势分布' },
+  share: { very: '非常想分享', maybe: '看情况', unlikely: '大概率不会', never: '完全不会' },
+  followup: { moments: '微信朋友圈', wechat: '微信群聊/私聊', social: '小红书/抖音', community: '网球社区', save: '只保存不分享' },
+};
+
+const PART1_LABELS = {
+  court: { show: '显示球场', hide: '隐藏球场', whatever: '无所谓' },
+  style: { current: '线条', tube: '管道', ribbon: '飘带' },
+  ballfly: { yes: '球飞出', no: '不飞出', whatever: '无所谓' },
+  marker: { ball: '网球', ring: '光圈', cross: '十字', star: '放射' },
+  speed: { '0.25': '0.25x 极慢', '0.5': '0.5x 慢速', '1': '1x 正常', '1.5': '1.5x 较快', '2': '2x 快速' },
+  model: { fine: '没问题', uncomfortable: '有点不适', whatever: '无所谓' },
+  followup: { clothes: '加运动服纹理', silhouette: '纯色剪影', transparent: '降低不透明度', nochange: '不需要改' },
+};
+
+const PART1_STEPS = [
+  { id: 'court', title: '第 1 题：球场背景' },
+  { id: 'style', title: '第 2 题：动作轨迹效果' },
+  { id: 'ballfly', title: '第 3 题：击球后球飞出' },
+  { id: 'marker', title: '第 4 题：击中提示' },
+  { id: 'speed', title: '第 5 题：动画播放速度' },
+  { id: 'model', title: '第 6 题：人物模型感受' },
+];
+
+function renderSummary() {
+  const panel = document.getElementById('survey-panel');
+  let html = `<div class="survey-title">Part 2 调研汇总</div>`;
+  html += `<div class="survey-desc">以下是你对「发球轨迹视频」的选择，确认无误后提交。</div>`;
+  STEPS.forEach((step, idx) => {
+    const ans = answers[step.id] || {};
+    let choiceLabel;
+    if (step.type === 'multi' && step.id === 'data') {
+      choiceLabel = (ans.choices || []).map(v => LABELS.data[v] || v).join('、') || '未选择';
+    } else {
+      choiceLabel = ans.choice ? (LABELS[step.id]?.[ans.choice] || ans.choice) : '未选择';
+    }
+    html += `<div class="summary-section">`;
+    html += `<div class="summary-label">${step.title}</div>`;
+    html += `<div class="summary-value">${choiceLabel}</div>`;
+    if (step.followup && ans.followup && ans.followup.length > 0) {
+      const fLabels = ans.followup.map(v => LABELS.followup[v] || v).join('、');
+      html += `<div class="summary-value" style="font-size:13px;color:#555;">分享渠道：${fLabels}</div>`;
+    }
+    if (ans.comment) html += `<div style="font-size:13px;color:#666;margin-top:4px;font-style:italic;">"${ans.comment}"</div>`;
+    html += `<button class="summary-edit-btn" data-step="${idx}">修改</button>`;
+    html += `</div>`;
+  });
+
+  html += `<div class="export-area">`;
+  html += `<button class="btn-submit" id="btn-confirm">确认提交全部</button>`;
+  html += `</div>`;
+
+  panel.innerHTML = html;
+
+  panel.querySelectorAll('.summary-edit-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      editingFromSummary = true;
+      currentStep = parseInt(btn.dataset.step);
+      renderStep(currentStep);
+    });
+  });
+
+  document.getElementById('btn-confirm').addEventListener('click', () => {
+    saveData();
+    renderComplete();
+  });
+}
+
+function saveData() {
+  // 合并 Part1 + Part2 答案为一条 combined 记录
+  const combinedAnswers = { ...part1Answers, ...answers };
+  // 多选题的 data 字段统一为 choice 数组格式
+  if (combinedAnswers.data && combinedAnswers.data.choices) {
+    combinedAnswers.data.choice = combinedAnswers.data.choices;
+  }
+  const record = {
+    part: 'combined',
+    answers: combinedAnswers,
+    timestamp: new Date().toISOString(),
+    id: 'user_' + Date.now()
+  };
+  // localStorage
+  const stored = JSON.parse(localStorage.getItem('tennis-survey-results') || '[]');
+  stored.push(record);
+  localStorage.setItem('tennis-survey-results', JSON.stringify(stored));
+  // 清理 Part1 临时数据
+  localStorage.removeItem('tennis-survey-part1-answers');
+  // POST to server (works on local server; silently succeeds on static hosting)
+  const API_BASE = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+    ? '' : (window.SURVEY_API_BASE || '');
+  const submitUrl = API_BASE + '/api/submit';
+  fetch(submitUrl, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(record)
+  }).then(r => r.json()).then(() => {
+    const tip = document.getElementById('sync-tip');
+    if (tip) { tip.textContent = '✓ 已自动同步到服务器'; tip.style.color = '#4caf50'; }
+  }).catch(() => {
+    const tip = document.getElementById('sync-tip');
+    if (tip) { tip.textContent = '✓ 提交完成'; tip.style.color = '#4caf50'; }
+  });
+}
+
+function renderComplete() {
+  const panel = document.getElementById('survey-panel');
+  let html = `<div class="survey-title" style="text-align:center;">提交成功！</div>`;
+  html += `<div class="survey-desc" style="text-align:center;">感谢你的参与，你的反馈对我们非常有帮助。</div>`;
+  html += `<div id="sync-tip" style="text-align:center;font-size:12px;margin-bottom:12px;color:#4caf50;">✓ 提交完成</div>`;
+  panel.innerHTML = html;
+}
+
+// ============ Part1 继承信息提示 ============
+const styleNames = { current: '线条', tube: '管道', ribbon: '飘带' };
+const markerNames = { ball: '网球', ring: '光圈', cross: '十字', star: '放射', none: '无' };
+const infoEl = document.getElementById('part1-inherit-info');
+if (infoEl) {
+  infoEl.innerHTML = `✅ 已继承你在 Part 1 的选择：<b>轨迹=${styleNames[part1Style]||part1Style}</b>、<b>标记=${markerNames[part1Marker]||part1Marker}</b>、<b>球飞出=${part1BallFly?'是':'否'}</b>、<b>球场=${part1Court?'显示':'隐藏'}</b>`;
+}
+
+// ============ Start Survey ============
+document.getElementById('btn-begin-survey').addEventListener('click', () => {
+  document.getElementById('freeplay-panel').classList.add('hidden');
+  document.getElementById('freeplay-start').classList.add('hidden');
+  document.getElementById('part1-inherit-info').style.display = 'none';
+  document.getElementById('survey-panel').classList.remove('hidden');
+  currentStep = 0;
+  renderStep(0);
+});
+
+</script>
+</body>
+</html>
