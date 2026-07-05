@@ -373,6 +373,7 @@ scene.add(fillMesh);
 function buildRibbonGeometry(curve, segments, halfWidth) {
   const positions = [];
   const tAttrs = [];
+  const edgeAttrs = []; // 0=内侧边缘, 1=外侧边缘
   const indices = [];
 
   for (let i = 0; i <= segments; i++) {
@@ -380,17 +381,13 @@ function buildRibbonGeometry(curve, segments, halfWidth) {
     const point = curve.getPointAt(t);
     const tangent = curve.getTangentAt(t).normalize();
 
-    // Ribbon normal rotates to simulate racket face angle change
-    // Twist: starts flat horizontal, rotates through swing, peaks at hit
     const twistAngle = Math.PI * 0.3 * Math.sin(t * Math.PI * 1.5) + t * Math.PI * 0.8;
 
-    // Compute a reference "up" then rotate around tangent
     let up = new THREE.Vector3(0, 1, 0);
     if (Math.abs(tangent.dot(up)) > 0.99) up = new THREE.Vector3(1, 0, 0);
     const binormal = new THREE.Vector3().crossVectors(tangent, up).normalize();
     const normal = new THREE.Vector3().crossVectors(binormal, tangent).normalize();
 
-    // Rotate binormal/normal around tangent by twistAngle
     const cos = Math.cos(twistAngle), sin = Math.sin(twistAngle);
     const ribbonDir = new THREE.Vector3(
       binormal.x * cos + normal.x * sin,
@@ -398,16 +395,16 @@ function buildRibbonGeometry(curve, segments, halfWidth) {
       binormal.z * cos + normal.z * sin
     ).normalize();
 
-    // Width varies: wider near hit point
     const widthScale = 0.6 + 0.4 * Math.exp(-Math.pow(t - 0.57, 2) / 0.1);
     const w = halfWidth * widthScale;
 
-    // Two vertices per segment (left and right edge of ribbon)
+    // vertex 0: 内侧(靠近人体), vertex 1: 外侧
     positions.push(
       point.x - ribbonDir.x * w, point.y - ribbonDir.y * w, point.z - ribbonDir.z * w,
       point.x + ribbonDir.x * w, point.y + ribbonDir.y * w, point.z + ribbonDir.z * w
     );
     tAttrs.push(t, t);
+    edgeAttrs.push(0.0, 1.0); // 内侧=0, 外侧=1
 
     if (i < segments) {
       const base = i * 2;
@@ -419,6 +416,7 @@ function buildRibbonGeometry(curve, segments, halfWidth) {
   const geo = new THREE.BufferGeometry();
   geo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
   geo.setAttribute('aT', new THREE.Float32BufferAttribute(tAttrs, 1));
+  geo.setAttribute('aEdge', new THREE.Float32BufferAttribute(edgeAttrs, 1));
   geo.setIndex(indices);
   geo.computeVertexNormals();
   return geo;
@@ -429,10 +427,13 @@ const ribbonMat = new THREE.ShaderMaterial({
   uniforms: { uProgress: { value: 1.0 } },
   vertexShader: `
     attribute float aT;
+    attribute float aEdge;
     varying float vT;
+    varying float vEdge;
     varying vec3 vNormal;
     void main() {
       vT = aT;
+      vEdge = aEdge;
       vNormal = normalize(normalMatrix * normal);
       gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
     }
@@ -440,6 +441,7 @@ const ribbonMat = new THREE.ShaderMaterial({
   fragmentShader: `
     uniform float uProgress;
     varying float vT;
+    varying float vEdge;
     varying vec3 vNormal;
     void main() {
       if (vT > uProgress) discard;
@@ -453,8 +455,8 @@ const ribbonMat = new THREE.ShaderMaterial({
         color = vec3(1.0, 0.9 - s * 0.7, 0.0);
       }
       float light = 0.5 + 0.5 * abs(dot(vNormal, vec3(0.3, 0.8, 0.5)));
-      // 内侧100%透明(alpha=0)，渐变到外侧完全不透明(alpha=1)
-      float alpha = smoothstep(0.0, 0.5, vT);
+      // 宽度方向渐变：内侧(aEdge=0)完全透明，外侧(aEdge=1)完全不透明
+      float alpha = vEdge;
       gl_FragColor = vec4(color * light, alpha);
     }
   `,
@@ -465,21 +467,21 @@ ribbonMesh.renderOrder = 1;
 ribbonMesh.visible = false;
 scene.add(ribbonMesh);
 
-// Ribbon shell (same shape, dim gray, fade near start)
+// Ribbon shell (same shape, dim gray, same edge fade)
 const ribbonShellGeo = buildRibbonGeometry(wristCurve, 120, 0.065);
 const ribbonShellMat = new THREE.ShaderMaterial({
   vertexShader: `
-    attribute float aT;
-    varying float vT;
+    attribute float aEdge;
+    varying float vEdge;
     void main() {
-      vT = aT;
+      vEdge = aEdge;
       gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
     }
   `,
   fragmentShader: `
-    varying float vT;
+    varying float vEdge;
     void main() {
-      float alpha = smoothstep(0.0, 0.5, vT) * 0.2;
+      float alpha = vEdge * 0.2;
       gl_FragColor = vec4(0.53, 0.53, 0.53, alpha);
     }
   `,
