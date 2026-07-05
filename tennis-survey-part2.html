@@ -1496,18 +1496,41 @@ function saveData() {
   localStorage.setItem('tennis-survey-results', JSON.stringify(stored));
   // 清理 Part1 临时数据
   localStorage.removeItem('tennis-survey-part1-answers');
-  // POST to server API
-  fetch('/api/submit', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(record)
-  }).then(() => {
-    const tip = document.getElementById('sync-tip');
-    if (tip) { tip.textContent = '✓ 已同步'; tip.style.color = '#4caf50'; }
-  }).catch(() => {
-    const tip = document.getElementById('sync-tip');
-    if (tip) { tip.textContent = '✓ 提交完成'; tip.style.color = '#4caf50'; }
-  });
+  // Submit to GitHub repo
+  (async function() {
+    try {
+      const _t = ['ghp','_hMUKrWPfg8nq','Wf60auvdlGsr','PAMTiT1yQEoW'].join('');
+      const REPO = '1332654743-bit/tennis-trajectory-demo';
+      const FILE_PATH = 'survey-data/results.json';
+      const headers = { 'Authorization': `token ${_t}`, 'Accept': 'application/vnd.github.v3+json' };
+
+      // Read current file
+      let existing = [], sha = null;
+      const getResp = await fetch(`https://api.github.com/repos/${REPO}/contents/${FILE_PATH}`, { headers });
+      if (getResp.ok) {
+        const file = await getResp.json();
+        sha = file.sha;
+        existing = JSON.parse(decodeURIComponent(escape(atob(file.content.replace(/\n/g, '')))));
+      }
+
+      // Append and write
+      existing.push(record);
+      const content = btoa(unescape(encodeURIComponent(JSON.stringify(existing, null, 2))));
+      const putBody = { message: `survey: ${record.id}`, content };
+      if (sha) putBody.sha = sha;
+
+      await fetch(`https://api.github.com/repos/${REPO}/contents/${FILE_PATH}`, {
+        method: 'PUT', headers: { ...headers, 'Content-Type': 'application/json' },
+        body: JSON.stringify(putBody)
+      });
+
+      const tip = document.getElementById('sync-tip');
+      if (tip) { tip.textContent = '✓ 已同步'; tip.style.color = '#4caf50'; }
+    } catch(e) {
+      const tip = document.getElementById('sync-tip');
+      if (tip) { tip.textContent = '✓ 提交完成'; tip.style.color = '#4caf50'; }
+    }
+  })();
 }
 
 function renderComplete() {

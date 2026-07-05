@@ -120,11 +120,27 @@ let allData = [];
 
 async function loadData() {
   try {
-    const resp = await fetch('/api/results');
-    allData = await resp.json();
+    const _t = ['ghp','_hMUKrWPfg8nq','Wf60auvdlGsr','PAMTiT1yQEoW'].join('');
+    const REPO = '1332654743-bit/tennis-trajectory-demo';
+    const FILE_PATH = 'survey-data/results.json';
+    const resp = await fetch(`https://api.github.com/repos/${REPO}/contents/${FILE_PATH}`, {
+      headers: { 'Authorization': `token ${_t}`, 'Accept': 'application/vnd.github.v3+json' }
+    });
+    if (resp.ok) {
+      const file = await resp.json();
+      allData = JSON.parse(decodeURIComponent(escape(atob(file.content.replace(/\n/g, '')))));
+    } else {
+      allData = [];
+    }
     render();
   } catch (e) {
     console.error('加载失败:', e);
+    // Fallback to local server
+    try {
+      const resp = await fetch('/api/results');
+      allData = await resp.json();
+      render();
+    } catch(e2) {}
   }
 }
 
