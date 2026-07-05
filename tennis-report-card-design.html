@@ -152,8 +152,8 @@ html, body { height: 100%; font-family: -apple-system, BlinkMacSystemFont, 'SF P
     <div class="panel-row">
       <span class="panel-label">击球标记</span>
       <div class="panel-btns">
-        <button class="active" data-marker="ball">网球</button>
-        <button data-marker="ring">光环</button>
+        <button data-marker="ball">网球</button>
+        <button class="active" data-marker="ring">光环</button>
         <button data-marker="cross">准星</button>
         <button data-marker="star">星芒</button>
         <button data-marker="none">无</button>
@@ -592,7 +592,7 @@ const flyBall = new THREE.Mesh(flyBallGeo, flyBallMat);
 flyBall.visible = false;
 scene.add(flyBall);
 
-let markerStyle = 'ball'; // 'ball' | 'ring' | 'cross' | 'star' | 'none'
+let markerStyle = 'ring'; // 'ball' | 'ring' | 'cross' | 'star' | 'none'
 let ballFly = true; // whether ball flies out after hit
 
 function updateTennisBall(progress) {
