@@ -139,6 +139,7 @@ html, body { height: 100%; font-family: -apple-system, BlinkMacSystemFont, 'SF P
     <div class="panel-row">
       <span class="panel-label">轨迹样式</span>
       <div class="panel-btns">
+        <button data-style="current">现状</button>
         <button class="active" data-style="tube">管状</button>
         <button data-style="ribbon">绸带</button>
       </div>
@@ -808,6 +809,11 @@ document.querySelectorAll('[data-style]').forEach(btn => {
       fillMesh.visible = false;
       ribbonMesh.visible = true;
       ribbonShellMesh.visible = true;
+    } else if (currentStyle === 'current') {
+      shellMesh.visible = false;
+      fillMesh.visible = true;
+      ribbonMesh.visible = false;
+      ribbonShellMesh.visible = false;
     } else {
       shellMesh.visible = true;
       fillMesh.visible = true;
