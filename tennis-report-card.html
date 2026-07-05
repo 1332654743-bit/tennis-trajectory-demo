@@ -563,7 +563,7 @@ controls.update();
 
 // ============ Ball Animation ============
 const BALL_HIT_T = 0.57; // 对齐轨迹击球点 hitParamT
-const BALL_FLY_END_T = 0.8;
+const BALL_FLY_END_T = 0.95; // 飞出时间拉长，让用户看清球飞出过程
 const BALL_TOSS_START = new THREE.Vector3(0.05, 2.8, 0.1);
 const BALL_FLY_END = new THREE.Vector3(0.3, 0.6, 5.5);
 
@@ -612,7 +612,7 @@ function updateTennisBall(progress) {
     if (ballFly && progress < BALL_FLY_END_T) {
       flyBall.visible = true;
       const t = (progress - BALL_HIT_T) / (BALL_FLY_END_T - BALL_HIT_T);
-      const eased = 1 - Math.pow(1 - t, 5);
+      const eased = 1 - Math.pow(1 - t, 2);
       flyBall.position.lerpVectors(hitPoint, BALL_FLY_END, eased);
       flyBall.scale.setScalar(1 - eased * 0.6);
     } else {
@@ -625,7 +625,7 @@ function updateTennisBall(progress) {
       if (progress < BALL_FLY_END_T) {
         tennisBall.visible = true;
         const t = (progress - BALL_HIT_T) / (BALL_FLY_END_T - BALL_HIT_T);
-        const eased = 1 - Math.pow(1 - t, 5);
+        const eased = 1 - Math.pow(1 - t, 2);
         tennisBall.position.lerpVectors(hitPoint, BALL_FLY_END, eased);
         tennisBall.scale.setScalar(1 - eased * 0.6);
       } else {
@@ -812,8 +812,23 @@ document.getElementById('rate-btn').addEventListener('click', () => {
 });
 
 // ============ Marker Style Toggle ============
+function updateMarkerConstraints() {
+  // 球飞出时：不能选"网球"（两球不共存）
+  // 球不飞出时：不能选"无"（否则啥都看不到）
+  document.querySelectorAll('[data-marker]').forEach(b => {
+    if (ballFly && b.dataset.marker === 'ball') {
+      b.disabled = true; b.style.opacity = '0.3'; b.style.pointerEvents = 'none';
+    } else if (!ballFly && b.dataset.marker === 'none') {
+      b.disabled = true; b.style.opacity = '0.3'; b.style.pointerEvents = 'none';
+    } else {
+      b.disabled = false; b.style.opacity = ''; b.style.pointerEvents = '';
+    }
+  });
+}
+
 document.querySelectorAll('[data-marker]').forEach(btn => {
   btn.addEventListener('click', () => {
+    if (btn.disabled) return;
     document.querySelectorAll('[data-marker]').forEach(b => b.classList.remove('active'));
     btn.classList.add('active');
     markerStyle = btn.dataset.marker;
@@ -826,8 +841,20 @@ document.querySelectorAll('[data-fly]').forEach(btn => {
     document.querySelectorAll('[data-fly]').forEach(b => b.classList.remove('active'));
     btn.classList.add('active');
     ballFly = btn.dataset.fly === 'yes';
+    // 切换后检查当前标记是否冲突，自动修正
+    if (ballFly && markerStyle === 'ball') {
+      markerStyle = 'ring';
+      document.querySelectorAll('[data-marker]').forEach(b => b.classList.remove('active'));
+      document.querySelector('[data-marker="ring"]').classList.add('active');
+    } else if (!ballFly && markerStyle === 'none') {
+      markerStyle = 'ball';
+      document.querySelectorAll('[data-marker]').forEach(b => b.classList.remove('active'));
+      document.querySelector('[data-marker="ball"]').classList.add('active');
+    }
+    updateMarkerConstraints();
   });
 });
+updateMarkerConstraints();
 </script>
 </body>
 </html>
