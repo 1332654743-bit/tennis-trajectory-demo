@@ -1,0 +1,67 @@
+{
+  "part": "combined",
+  "answers": {
+    "court": {
+      "btnValue": "show",
+      "choice": "show",
+      "comment": ""
+    },
+    "style": {
+      "btnValue": "ribbon",
+      "choice": "ribbon",
+      "comment": ""
+    },
+    "ballfly": {
+      "btnValue": "yes",
+      "choice": "yes",
+      "comment": ""
+    },
+    "marker": {
+      "btnValue": "cross",
+      "choice": "cross",
+      "comment": ""
+    },
+    "speed": {
+      "btnValue": "0.5",
+      "choice": "0.5",
+      "comment": ""
+    },
+    "model": {
+      "choice": "fine",
+      "followup": [],
+      "comment": ""
+    },
+    "camera": {
+      "btnValue": "orbit",
+      "choice": "orbit",
+      "comment": ""
+    },
+    "data": {
+      "choices": [
+        "max_serve",
+        "max_hit",
+        "max_rally"
+      ],
+      "comment": "",
+      "choice": [
+        "max_serve",
+        "max_hit",
+        "max_rally"
+      ]
+    },
+    "chart": {
+      "btnValue": "stroke",
+      "choice": "stroke",
+      "comment": ""
+    },
+    "share": {
+      "choice": "very",
+      "followup": [
+        "social"
+      ],
+      "comment": ""
+    }
+  },
+  "timestamp": "2026-07-05T13:34:42.262Z",
+  "id": "user_1783258482262"
+}

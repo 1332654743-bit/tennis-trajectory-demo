@@ -1,0 +1,596 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>网球发球 · 鹰眼回放</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html, body { height: 100%; overflow: hidden; font-family: -apple-system, 'PingFang SC', sans-serif; background: #0a0a0f; color: #fff; }
+.app { display: flex; flex-direction: column; height: 100%; max-width: 430px; margin: 0 auto; position: relative; }
+
+/* 顶栏 */
+.topbar { height: 50px; display: flex; align-items: center; padding: 0 16px; flex-shrink: 0; z-index: 10; }
+.topbar .back { background: none; border: none; color: #fff; font-size: 20px; cursor: pointer; padding: 6px; }
+.topbar .title { flex: 1; text-align: center; font-size: 15px; font-weight: 600; }
+.topbar .share-btn { background: #ff6b00; border: none; color: #fff; font-size: 13px; padding: 7px 16px; border-radius: 6px; cursor: pointer; font-weight: 600; }
+
+/* Canvas 预览区 */
+.preview-area { flex: 1; position: relative; min-height: 0; display: flex; align-items: center; justify-content: center; }
+#hawkeye-canvas { width: 100%; height: 100%; display: block; }
+
+/* 播放按钮 */
+.play-btn { position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%); width: 60px; height: 60px; border-radius: 50%; background: rgba(255,107,0,0.85); border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; z-index: 5; transition: opacity 0.3s, transform 0.3s; }
+.play-btn::after { content: '▶'; color: #fff; font-size: 20px; margin-left: 3px; }
+.play-btn.hidden { opacity: 0; pointer-events: none; transform: translate(-50%,-50%) scale(0.8); }
+
+/* 底部编辑区 */
+.editor-bottom { flex-shrink: 0; background: rgba(28,28,30,0.98); border-radius: 16px 16px 0 0; padding-bottom: env(safe-area-inset-bottom, 16px); max-height: 32vh; display: flex; flex-direction: column; }
+.editor-tabs { display: flex; padding: 12px 16px 0; flex-shrink: 0; }
+.editor-tab { flex: 1; text-align: center; padding: 10px 0; font-size: 13px; color: #888; cursor: pointer; position: relative; }
+.editor-tab.active { color: #fff; font-weight: 600; }
+.editor-tab.active::after { content: ''; position: absolute; bottom: 0; left: 50%; transform: translateX(-50%); width: 20px; height: 2px; background: #ff6b00; border-radius: 1px; }
+.editor-content { flex: 1; overflow-y: auto; padding: 14px 16px; min-height: 0; }
+.editor-panel { display: none; }
+.editor-panel.active { display: block; }
+
+/* 视角卡片 */
+.view-scroll { display: flex; gap: 10px; overflow-x: auto; padding-bottom: 6px; }
+.view-card { flex-shrink: 0; width: 100px; padding: 14px 10px; border-radius: 10px; background: #3a3a3c; cursor: pointer; text-align: center; border: 1.5px solid transparent; transition: all 0.2s; }
+.view-card.active { border-color: #ff6b00; background: rgba(255,107,0,0.15); }
+.view-card .v-icon { font-size: 20px; margin-bottom: 6px; }
+.view-card .v-name { font-size: 12px; color: #eee; }
+
+/* 数据 pills */
+.data-pills { display: flex; flex-wrap: wrap; gap: 8px; }
+.data-pill { display: flex; align-items: center; gap: 6px; padding: 8px 14px; border-radius: 20px; background: #3a3a3c; font-size: 13px; color: #ccc; cursor: pointer; border: 1.5px solid transparent; transition: all 0.2s; }
+.data-pill.selected { background: rgba(255,107,0,0.2); border-color: #ff6b00; color: #fff; }
+
+/* 样式选择 */
+.style-scroll { display: flex; gap: 12px; }
+.style-card { flex-shrink: 0; width: 80px; height: 80px; border-radius: 12px; cursor: pointer; border: 2px solid transparent; transition: all 0.2s; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; }
+.style-card.active { border-color: #ff6b00; }
+.style-card .s-preview { width: 40px; height: 4px; border-radius: 2px; }
+.style-card .s-name { font-size: 11px; color: #ccc; }
+
+/* 分享弹窗 */
+.share-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.6); z-index: 50; display: none; align-items: flex-end; justify-content: center; }
+.share-overlay.show { display: flex; }
+.share-panel { background: #2c2c2e; border-radius: 16px 16px 0 0; width: 100%; max-width: 430px; padding: 20px 16px 30px; }
+.share-panel .panel-title { text-align: center; font-size: 14px; color: #aaa; margin-bottom: 16px; }
+.share-icons { display: flex; justify-content: center; gap: 24px; }
+.share-icon { display: flex; flex-direction: column; align-items: center; gap: 6px; cursor: pointer; }
+.share-icon .ic { width: 48px; height: 48px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 20px; }
+.ic-wx { background: #07c160; } .ic-pyq { background: #07c160; } .ic-dy { background: #111; border: 1px solid #333; } .ic-save { background: #555; }
+.share-icon .lbl { font-size: 11px; color: #aaa; }
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="topbar">
+    <button class="back" id="btn-back">←</button>
+    <span class="title">发球轨迹</span>
+    <button class="share-btn" id="btn-share">分享</button>
+  </div>
+
+  <div class="preview-area">
+    <canvas id="hawkeye-canvas"></canvas>
+    <button class="play-btn" id="play-btn"></button>
+  </div>
+
+  <div class="editor-bottom">
+    <div class="editor-tabs">
+      <div class="editor-tab active" data-tab="view">视角</div>
+      <div class="editor-tab" data-tab="data">数据</div>
+      <div class="editor-tab" data-tab="style">样式</div>
+    </div>
+    <div class="editor-content">
+      <div class="editor-panel active" id="panel-view">
+        <div class="view-scroll" id="view-scroll"></div>
+      </div>
+      <div class="editor-panel" id="panel-data">
+        <div class="data-pills" id="data-pills"></div>
+      </div>
+      <div class="editor-panel" id="panel-style">
+        <div class="style-scroll" id="style-scroll"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 分享弹窗 -->
+<div class="share-overlay" id="share-overlay">
+  <div class="share-panel">
+    <div class="panel-title">分享到</div>
+    <div class="share-icons">
+      <div class="share-icon"><div class="ic ic-wx">💬</div><span class="lbl">微信</span></div>
+      <div class="share-icon"><div class="ic ic-pyq">⭕</div><span class="lbl">朋友圈</span></div>
+      <div class="share-icon"><div class="ic ic-dy">🎵</div><span class="lbl">抖音</span></div>
+      <div class="share-icon"><div class="ic ic-save">💾</div><span class="lbl">保存</span></div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ============ 配置 ============
+const VIEWS = [
+  { key: 'side', name: '侧视', icon: '📐' },
+  { key: 'top', name: '俯视', icon: '🔽' },
+  { key: 'player', name: '球员视角', icon: '👁' },
+];
+
+const DATA_ITEMS = [
+  { key: 'max_speed', label: '最快发球', value: '189', unit: 'km/h', selected: true },
+  { key: 'avg_speed', label: '平均速度', value: '162', unit: 'km/h', selected: true },
+  { key: 'ace', label: 'ACE球', value: '12', unit: '个', selected: true },
+  { key: 'success', label: '一发成功率', value: '68', unit: '%', selected: false },
+  { key: 'spin', label: '平均转速', value: '2450', unit: 'rpm', selected: false },
+  { key: 'max_spin', label: '最大转速', value: '3120', unit: 'rpm', selected: false },
+];
+
+const STYLES = [
+  { key: 'fire', name: '火焰', colors: ['#ff4500', '#ff8c00', '#ffd700'] },
+  { key: 'ice', name: '冰蓝', colors: ['#00bfff', '#87cefa', '#e0ffff'] },
+  { key: 'classic', name: '经典', colors: ['#00e676', '#76ff03', '#ccff90'] },
+];
+
+let currentView = 'side';
+let selectedData = DATA_ITEMS.filter(d => d.selected).map(d => d.key);
+let currentStyle = 'fire';
+let isPlaying = false;
+let animProgress = 0;
+let lastTime = 0;
+let canvas, ctx, W, H;
+
+// ============ 初始化 ============
+function init() {
+  canvas = document.getElementById('hawkeye-canvas');
+  ctx = canvas.getContext('2d');
+  resize();
+  window.addEventListener('resize', resize);
+  renderViewPanel();
+  renderDataPanel();
+  renderStylePanel();
+  drawFrame();
+}
+
+function resize() {
+  const rect = canvas.parentElement.getBoundingClientRect();
+  W = rect.width; H = rect.height;
+  canvas.width = W * devicePixelRatio;
+  canvas.height = H * devicePixelRatio;
+  canvas.style.width = W + 'px';
+  canvas.style.height = H + 'px';
+  ctx.setTransform(devicePixelRatio, 0, 0, devicePixelRatio, 0, 0);
+  drawFrame();
+}
+
+// ============ 球场绘制 ============
+function drawCourt() {
+  ctx.save();
+  if (currentView === 'top') {
+    drawCourtTop();
+  } else if (currentView === 'player') {
+    drawCourtPlayer();
+  } else {
+    drawCourtSide();
+  }
+  ctx.restore();
+}
+
+function drawCourtSide() {
+  const courtW = W * 0.85;
+  const courtH = H * 0.35;
+  const cx = W / 2;
+  const cy = H * 0.45;
+
+  // 地面（透视梯形）
+  ctx.beginPath();
+  ctx.moveTo(cx - courtW * 0.35, cy + courtH * 0.3);
+  ctx.lineTo(cx + courtW * 0.35, cy + courtH * 0.3);
+  ctx.lineTo(cx + courtW * 0.5, cy + courtH);
+  ctx.lineTo(cx - courtW * 0.5, cy + courtH);
+  ctx.closePath();
+  ctx.fillStyle = 'rgba(0, 80, 40, 0.3)';
+  ctx.fill();
+  ctx.strokeStyle = 'rgba(255,255,255,0.3)';
+  ctx.lineWidth = 1;
+  ctx.stroke();
+
+  // 球网
+  const netX = cx;
+  const netTop = cy - courtH * 0.05;
+  const netBottom = cy + courtH * 0.65;
+  ctx.beginPath();
+  ctx.moveTo(netX, netTop);
+  ctx.lineTo(netX, netBottom);
+  ctx.strokeStyle = 'rgba(255,255,255,0.5)';
+  ctx.lineWidth = 1.5;
+  ctx.stroke();
+
+  // 网格线
+  ctx.strokeStyle = 'rgba(255,255,255,0.1)';
+  ctx.lineWidth = 0.5;
+  for (let i = 1; i < 5; i++) {
+    const y = cy + courtH * 0.3 + (courtH * 0.7 * i / 5);
+    ctx.beginPath();
+    const shrink = 1 - (i / 5) * 0.3;
+    ctx.moveTo(cx - courtW * 0.5 * shrink, y);
+    ctx.lineTo(cx + courtW * 0.5 * shrink, y);
+    ctx.stroke();
+  }
+}
+
+function drawCourtTop() {
+  const courtW = W * 0.7;
+  const courtH = H * 0.55;
+  const cx = W / 2;
+  const cy = H * 0.45;
+
+  // 球场矩形
+  ctx.strokeStyle = 'rgba(255,255,255,0.4)';
+  ctx.lineWidth = 1.5;
+  ctx.strokeRect(cx - courtW/2, cy - courtH/2, courtW, courtH);
+
+  // 中线
+  ctx.beginPath();
+  ctx.moveTo(cx - courtW/2, cy);
+  ctx.lineTo(cx + courtW/2, cy);
+  ctx.strokeStyle = 'rgba(255,255,255,0.3)';
+  ctx.stroke();
+
+  // 发球区
+  const serviceW = courtW * 0.4;
+  ctx.strokeStyle = 'rgba(255,255,255,0.2)';
+  ctx.strokeRect(cx - serviceW/2, cy - courtH/2, serviceW, courtH/2);
+  ctx.strokeRect(cx - serviceW/2, cy, serviceW, courtH/2);
+
+  // T线
+  ctx.beginPath();
+  ctx.moveTo(cx, cy - courtH * 0.25);
+  ctx.lineTo(cx, cy + courtH * 0.25);
+  ctx.stroke();
+}
+
+function drawCourtPlayer() {
+  const courtW = W * 0.9;
+  const courtH = H * 0.6;
+  const cx = W / 2;
+  const cy = H * 0.55;
+
+  // 透视强烈的球场
+  ctx.beginPath();
+  ctx.moveTo(cx - courtW * 0.15, cy - courtH * 0.7);
+  ctx.lineTo(cx + courtW * 0.15, cy - courtH * 0.7);
+  ctx.lineTo(cx + courtW * 0.5, cy + courtH * 0.3);
+  ctx.lineTo(cx - courtW * 0.5, cy + courtH * 0.3);
+  ctx.closePath();
+  ctx.fillStyle = 'rgba(0, 80, 40, 0.25)';
+  ctx.fill();
+  ctx.strokeStyle = 'rgba(255,255,255,0.3)';
+  ctx.lineWidth = 1;
+  ctx.stroke();
+
+  // 球网（远处）
+  ctx.beginPath();
+  const netY = cy - courtH * 0.3;
+  ctx.moveTo(cx - courtW * 0.25, netY);
+  ctx.lineTo(cx + courtW * 0.25, netY);
+  ctx.strokeStyle = 'rgba(255,255,255,0.5)';
+  ctx.lineWidth = 2;
+  ctx.stroke();
+}
+
+// ============ 球轨迹 ============
+function getBallPath(t) {
+  // 抛物线轨迹：从发球位到对面场地落点
+  let startX, startY, endX, endY, peakY;
+
+  if (currentView === 'side') {
+    startX = W * 0.2; startY = H * 0.25;
+    endX = W * 0.75; endY = H * 0.58;
+    peakY = H * 0.15;
+  } else if (currentView === 'top') {
+    startX = W * 0.5; startY = H * 0.65;
+    endX = W * 0.38; endY = H * 0.22;
+    peakY = null; // top view: straight line
+  } else {
+    startX = W * 0.5; startY = H * 0.75;
+    endX = W * 0.45; endY = H * 0.2;
+    peakY = H * 0.15;
+  }
+
+  const x = startX + (endX - startX) * t;
+  let y;
+  if (peakY !== null) {
+    // 抛物线
+    const midY = peakY;
+    y = startY * (1-t)*(1-t) + 2 * midY * t * (1-t) + endY * t * t;
+  } else {
+    y = startY + (endY - startY) * t;
+  }
+  return { x, y };
+}
+
+// ============ 绘制帧 ============
+function drawFrame() {
+  ctx.clearRect(0, 0, W, H);
+
+  // 背景
+  const bg = ctx.createRadialGradient(W/2, H*0.4, 0, W/2, H*0.4, W*0.8);
+  bg.addColorStop(0, '#1a1a2e');
+  bg.addColorStop(1, '#0a0a0f');
+  ctx.fillStyle = bg;
+  ctx.fillRect(0, 0, W, H);
+
+  drawCourt();
+
+  const style = STYLES.find(s => s.key === currentStyle);
+  const colors = style.colors;
+
+  if (animProgress > 0.06) {
+    // 轨迹尾迹
+    const trailEnd = Math.min((animProgress - 0.06) / 0.24, 1);
+    const steps = Math.floor(trailEnd * 60);
+    for (let i = 0; i < steps; i++) {
+      const t = i / 60;
+      const pos = getBallPath(t);
+      const alpha = 0.1 + (i / steps) * 0.7;
+      const size = 2 + (i / steps) * 3;
+      const colorIdx = Math.floor((i / steps) * (colors.length - 1));
+      ctx.beginPath();
+      ctx.arc(pos.x, pos.y, size, 0, Math.PI * 2);
+      ctx.fillStyle = colors[colorIdx] + Math.floor(alpha * 255).toString(16).padStart(2, '0');
+      ctx.fill();
+    }
+
+    // 轨迹线
+    ctx.beginPath();
+    for (let i = 0; i <= steps; i++) {
+      const t = i / 60;
+      const pos = getBallPath(t);
+      i === 0 ? ctx.moveTo(pos.x, pos.y) : ctx.lineTo(pos.x, pos.y);
+    }
+    const grad = ctx.createLinearGradient(W*0.2, 0, W*0.75, 0);
+    grad.addColorStop(0, colors[0]);
+    grad.addColorStop(0.5, colors[1]);
+    grad.addColorStop(1, colors[2]);
+    ctx.strokeStyle = grad;
+    ctx.lineWidth = 2.5;
+    ctx.stroke();
+  }
+
+  // 球
+  if (animProgress > 0.06 && animProgress < 0.375) {
+    const ballT = Math.min((animProgress - 0.06) / 0.24, 1);
+    const pos = getBallPath(ballT);
+
+    // 发光
+    const glow = ctx.createRadialGradient(pos.x, pos.y, 0, pos.x, pos.y, 16);
+    glow.addColorStop(0, colors[1] + '80');
+    glow.addColorStop(1, 'transparent');
+    ctx.fillStyle = glow;
+    ctx.fillRect(pos.x - 20, pos.y - 20, 40, 40);
+
+    // 球体
+    ctx.beginPath();
+    ctx.arc(pos.x, pos.y, 8, 0, Math.PI * 2);
+    ctx.fillStyle = '#fff';
+    ctx.fill();
+    ctx.shadowColor = colors[1];
+    ctx.shadowBlur = 12;
+    ctx.fill();
+    ctx.shadowBlur = 0;
+  }
+
+  // 落点动画
+  if (animProgress >= 0.31 && animProgress < 0.5) {
+    const landT = (animProgress - 0.31) / 0.06;
+    const landPos = getBallPath(1);
+    const radius = 10 + landT * 30;
+    const alpha = 1 - landT;
+    ctx.beginPath();
+    ctx.arc(landPos.x, landPos.y, radius, 0, Math.PI * 2);
+    ctx.strokeStyle = colors[1] + Math.floor(alpha * 200).toString(16).padStart(2, '0');
+    ctx.lineWidth = 2;
+    ctx.stroke();
+
+    // 落点标记
+    ctx.beginPath();
+    ctx.arc(landPos.x, landPos.y, 5, 0, Math.PI * 2);
+    ctx.fillStyle = colors[0];
+    ctx.fill();
+  }
+
+  // 速度爆字
+  if (animProgress >= 0.375) {
+    const speedT = Math.min((animProgress - 0.375) / 0.125, 1);
+    const ease = 1 - Math.pow(1 - speedT, 3);
+    const fontSize = 36 + ease * 12;
+    const alpha = ease;
+
+    ctx.save();
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.font = `800 ${fontSize}px -apple-system, sans-serif`;
+    ctx.fillStyle = `rgba(255,255,255,${alpha})`;
+    ctx.shadowColor = colors[1];
+    ctx.shadowBlur = 20 * alpha;
+
+    const textY = currentView === 'top' ? H * 0.45 : H * 0.18;
+    ctx.fillText('189', W / 2, textY);
+
+    ctx.font = `600 ${fontSize * 0.35}px -apple-system, sans-serif`;
+    ctx.fillText('km/h', W / 2, textY + fontSize * 0.45);
+
+    // 标签
+    ctx.font = `500 12px -apple-system, sans-serif`;
+    ctx.fillStyle = `rgba(255,255,255,${alpha * 0.6})`;
+    ctx.fillText('最快发球', W / 2, textY - fontSize * 0.5);
+    ctx.restore();
+  }
+
+  // 数据卡片（定格阶段）
+  if (animProgress >= 0.5) {
+    const cardT = Math.min((animProgress - 0.5) / 0.1, 1);
+    const cardAlpha = cardT;
+    drawDataCards(cardAlpha);
+  }
+}
+
+function drawDataCards(alpha) {
+  const items = DATA_ITEMS.filter(d => selectedData.includes(d.key));
+  if (items.length === 0) return;
+
+  const cardW = 75;
+  const cardH = 52;
+  const gap = 8;
+  const totalW = items.length * cardW + (items.length - 1) * gap;
+  const startX = (W - totalW) / 2;
+  const y = H * 0.72;
+
+  items.forEach((item, i) => {
+    const x = startX + i * (cardW + gap);
+    ctx.fillStyle = `rgba(30,30,30,${alpha * 0.85})`;
+    ctx.beginPath();
+    ctx.roundRect(x, y, cardW, cardH, 8);
+    ctx.fill();
+
+    ctx.textAlign = 'center';
+    ctx.fillStyle = `rgba(170,170,170,${alpha})`;
+    ctx.font = '10px -apple-system, sans-serif';
+    ctx.fillText(item.label, x + cardW/2, y + 14);
+
+    ctx.fillStyle = `rgba(255,255,255,${alpha})`;
+    ctx.font = 'bold 16px -apple-system, sans-serif';
+    ctx.fillText(item.value, x + cardW/2, y + 32);
+
+    ctx.fillStyle = `rgba(136,136,136,${alpha})`;
+    ctx.font = '9px -apple-system, sans-serif';
+    ctx.fillText(item.unit, x + cardW/2, y + 46);
+  });
+}
+
+// ============ 动画循环 ============
+function animLoop(time) {
+  requestAnimationFrame(animLoop);
+  if (!isPlaying) return;
+
+  const dt = time - lastTime;
+  lastTime = time;
+  animProgress += dt / 8000; // 8秒总时长
+
+  if (animProgress >= 1) {
+    animProgress = 1;
+    isPlaying = false;
+    document.getElementById('play-btn').classList.remove('hidden');
+  }
+
+  drawFrame();
+}
+
+// ============ 播放控制 ============
+document.getElementById('play-btn').addEventListener('click', () => {
+  animProgress = 0;
+  isPlaying = true;
+  lastTime = performance.now();
+  document.getElementById('play-btn').classList.add('hidden');
+  requestAnimationFrame(animLoop);
+});
+
+// ============ Tab 切换 ============
+document.querySelectorAll('.editor-tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    document.querySelectorAll('.editor-tab').forEach(t => t.classList.remove('active'));
+    tab.classList.add('active');
+    document.querySelectorAll('.editor-panel').forEach(p => p.classList.remove('active'));
+    document.getElementById('panel-' + tab.dataset.tab).classList.add('active');
+  });
+});
+
+// ============ 视角面板 ============
+function renderViewPanel() {
+  const c = document.getElementById('view-scroll');
+  c.innerHTML = '';
+  VIEWS.forEach(v => {
+    const el = document.createElement('div');
+    el.className = 'view-card' + (currentView === v.key ? ' active' : '');
+    el.innerHTML = `<div class="v-icon">${v.icon}</div><div class="v-name">${v.name}</div>`;
+    el.addEventListener('click', () => {
+      currentView = v.key;
+      renderViewPanel();
+      animProgress = 0.9; isPlaying = false;
+      document.getElementById('play-btn').classList.remove('hidden');
+      drawFrame();
+    });
+    c.appendChild(el);
+  });
+}
+
+// ============ 数据面板 ============
+function renderDataPanel() {
+  const c = document.getElementById('data-pills');
+  c.innerHTML = '';
+  DATA_ITEMS.forEach(d => {
+    const sel = selectedData.includes(d.key);
+    const el = document.createElement('div');
+    el.className = 'data-pill' + (sel ? ' selected' : '');
+    el.textContent = d.label;
+    el.addEventListener('click', () => {
+      if (sel) {
+        selectedData = selectedData.filter(k => k !== d.key);
+      } else if (selectedData.length >= 4) {
+        return;
+      } else {
+        selectedData.push(d.key);
+      }
+      renderDataPanel();
+      drawFrame();
+    });
+    c.appendChild(el);
+  });
+}
+
+// ============ 样式面板 ============
+function renderStylePanel() {
+  const c = document.getElementById('style-scroll');
+  c.innerHTML = '';
+  STYLES.forEach(s => {
+    const el = document.createElement('div');
+    el.className = 'style-card' + (currentStyle === s.key ? ' active' : '');
+    el.style.background = '#2a2a2e';
+    el.innerHTML = `
+      <div class="s-preview" style="background: linear-gradient(90deg, ${s.colors.join(',')})"></div>
+      <div class="s-name">${s.name}</div>
+    `;
+    el.addEventListener('click', () => {
+      currentStyle = s.key;
+      renderStylePanel();
+      drawFrame();
+    });
+    c.appendChild(el);
+  });
+}
+
+// ============ 分享 ============
+document.getElementById('btn-share').addEventListener('click', () => {
+  document.getElementById('share-overlay').classList.add('show');
+});
+document.getElementById('share-overlay').addEventListener('click', (e) => {
+  if (e.target === e.currentTarget) e.currentTarget.classList.remove('show');
+});
+
+// ============ 返回 ============
+document.getElementById('btn-back').addEventListener('click', () => {
+  history.back();
+});
+
+// ============ 启动 ============
+init();
+// 自动播放一次
+setTimeout(() => {
+  document.getElementById('play-btn').click();
+}, 500);
+</script>
+</body>
+</html>

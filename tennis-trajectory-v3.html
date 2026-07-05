@@ -1,0 +1,1637 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>网球轨迹视频</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html, body { height: 100%; overflow: hidden; font-family: -apple-system, BlinkMacSystemFont, 'SF Pro', 'PingFang SC', sans-serif; background: #f5f5f5; color: #333; }
+.app { display: flex; flex-direction: column; height: 100%; max-width: 430px; margin: 0 auto; position: relative; overflow: hidden; }
+
+/* ========== 页面1: 运动报告 ========== */
+#page-report { display: flex; flex-direction: column; height: 100%; overflow-y: auto; -webkit-overflow-scrolling: touch; background: #fff; position: relative; }
+.report-header {
+  background: linear-gradient(135deg, #ff8c3a 0%, #ff6b00 100%);
+  padding: 60px 20px 24px; border-radius: 0 0 20px 20px; color: #fff; position: relative; flex-shrink: 0;
+}
+.report-header .back-icon { position: absolute; top: 16px; left: 16px; font-size: 20px; }
+.report-header .more-icon { position: absolute; top: 16px; right: 16px; font-size: 18px; }
+.report-header h1 { font-size: 28px; font-weight: 700; margin-bottom: 4px; }
+.report-header .date { font-size: 13px; opacity: 0.8; }
+.share-btn-main {
+  position: absolute; top: 26%; right: 8%;
+  background: transparent; color: transparent; border: none;
+  width: 100px; height: 44px; cursor: pointer;
+  z-index: 20;
+}
+
+.report-card {
+  margin: -10px 16px 16px; background: #fff; border-radius: 16px;
+  padding: 20px; box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+}
+.report-card-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+.report-card-top .label { font-size: 13px; color: #666; }
+.report-card-top .user { display: flex; align-items: center; gap: 6px; font-size: 12px; color: #999; }
+.report-card-top .avatar { width: 32px; height: 32px; border-radius: 50%; background: #fce4ec; display: flex; align-items: center; justify-content: center; font-size: 16px; }
+.report-main-stat { display: flex; align-items: baseline; gap: 8px; margin-bottom: 16px; }
+.report-main-stat .num { font-size: 48px; font-weight: 800; }
+.report-main-stat .unit { font-size: 16px; color: #666; }
+.report-divider { height: 1px; background: #eee; margin-bottom: 14px; }
+.report-stats { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px 10px; }
+.report-stat-item .val { font-size: 20px; font-weight: 700; }
+.report-stat-item .val span { font-size: 11px; color: #999; font-weight: 400; }
+.report-stat-item .lbl { font-size: 11px; color: #999; margin-top: 2px; }
+
+.report-body { padding: 16px; }
+.ai-section { background: #fff; border-radius: 16px; padding: 20px; box-shadow: 0 2px 10px rgba(0,0,0,0.04); }
+.ai-title { display: flex; align-items: center; gap: 8px; font-size: 15px; font-weight: 600; margin-bottom: 12px; }
+.ai-icon { width: 28px; height: 28px; background: #ffc107; border-radius: 50%; display: flex; align-items: center; justify-content: center; }
+.ai-text { font-size: 14px; line-height: 1.8; color: #555; }
+.ai-text em { font-style: normal; color: #ff6b00; font-weight: 500; }
+
+/* ========== 分享样式弹窗 ========== */
+.share-style-overlay {
+  position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0,0,0,0.5); z-index: 100; display: none; align-items: flex-end; justify-content: center;
+}
+.share-style-overlay.show { display: flex; }
+.share-style-panel {
+  background: #f0f0f0; border-radius: 14px 14px 0 0;
+  width: 100%; max-width: 430px; padding: 20px 16px 34px;
+}
+.share-style-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
+.share-style-header .title { font-size: 16px; font-weight: 600; }
+.share-style-header .close { background: none; border: none; font-size: 22px; color: #666; cursor: pointer; }
+.share-style-options { display: flex; gap: 12px; }
+.share-style-item {
+  flex: 1; background: #d4d4d4; border-radius: 12px;
+  padding: 24px 12px 14px; text-align: center; cursor: pointer; transition: transform 0.2s;
+}
+.share-style-item:active { transform: scale(0.95); }
+.share-style-item .icon { font-size: 28px; margin-bottom: 10px; display: block; }
+.share-style-item .name { font-size: 13px; color: #333; }
+
+/* ========== 页面2: 视频编辑页 ========== */
+#page-editor { display: none; flex-direction: column; height: 100%; background: #000; color: #fff; overflow: hidden; }
+#page-editor.active { display: flex; }
+#page-report.hidden { display: none; }
+
+.editor-topbar {
+  height: 50px; display: flex; align-items: center; padding: 0 16px;
+  flex-shrink: 0; background: #000; z-index: 10;
+}
+.editor-topbar .back { background: none; border: none; color: #fff; font-size: 20px; cursor: pointer; padding: 6px; }
+.editor-topbar .title { flex: 1; text-align: center; font-size: 16px; font-weight: 600; }
+.editor-topbar .share {
+  background: #ff6b00; border: none; color: #fff; font-size: 13px;
+  padding: 7px 16px; border-radius: 6px; cursor: pointer; font-weight: 600;
+}
+
+/* 视频预览区 */
+.video-preview {
+  position: relative; width: 100%;
+  background: #111; overflow: hidden;
+  flex: 1; min-height: 0;
+  margin-bottom: 160px;
+}
+#three-canvas { width: 100%; height: 100%; display: block; }
+
+/* 数据卡片叠加在视频预览上 */
+.card-overlay {
+  position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+  display: flex; flex-direction: column; justify-content: flex-end;
+  padding: 12px; pointer-events: none;
+  opacity: 0; transition: opacity 0.5s;
+}
+.card-overlay.show { opacity: 1; }
+
+.card-top-row {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 6px;
+}
+.card-user { display: flex; align-items: center; gap: 6px; }
+.card-user .av { width: 28px; height: 28px; border-radius: 50%; background: #fce4ec; display: flex; align-items: center; justify-content: center; font-size: 14px; }
+.card-user .uname { color: #ccc; font-size: 12px; }
+.card-brand { display: flex; align-items: center; gap: 4px; color: #ccc; font-size: 11px; }
+.card-brand .dot { width: 10px; height: 10px; background: #ff6b00; border-radius: 50%; }
+
+.card-big-num { font-size: 42px; font-weight: 800; color: #fff; line-height: 1.1; }
+.card-big-unit { font-size: 14px; color: #ccc; margin-left: 6px; }
+
+/* 雷达图 + 轨迹区在视频中间已由Three.js呈现 */
+.card-chart-area {
+  position: absolute; right: 12px; top: 50%; transform: translateY(-50%);
+  width: 120px; height: 120px; pointer-events: none;
+  opacity: 0; transition: opacity 0.5s;
+}
+.card-chart-area.show { opacity: 1; }
+.card-chart-area canvas { width: 100%; height: 100%; }
+
+.card-speed-bar {
+  height: 8px; border-radius: 4px; margin: 6px 0;
+  background: linear-gradient(90deg, #4caf50, #ffeb3b, #ff5722);
+}
+.card-speed-labels { display: flex; justify-content: space-between; font-size: 10px; color: #aaa; margin-bottom: 8px; }
+
+.card-subs { display: flex; justify-content: space-between; gap: 6px; }
+.card-sub { flex: 1; text-align: center; }
+.card-sub .sv { font-size: 20px; font-weight: 700; color: #fff; }
+.card-sub .su { font-size: 9px; color: #aaa; }
+.card-sub .sl { font-size: 10px; color: #888; margin-top: 2px; }
+
+/* 发球速度实时显示 */
+.speed-display {
+  position: absolute; top: 40px; left: 50%; transform: translateX(-50%);
+  pointer-events: none; z-index: 6; transition: opacity 0.3s;
+  text-align: center;
+}
+.speed-display .speed-label { font-size: 11px; color: #aaa; margin-bottom: 2px; }
+.speed-display .speed-value { font-size: 48px; font-weight: 800; color: #fff; line-height: 1; transition: transform 0.2s; }
+.speed-display .speed-unit { font-size: 12px; color: #aaa; margin-top: 2px; }
+.speed-display.peak .speed-value {
+  transform: scale(1.3);
+  text-shadow: 0 0 24px currentColor, 0 0 48px currentColor;
+}
+.speed-display.peak .speed-max-tag {
+  display: inline-block;
+}
+.speed-max-tag {
+  display: none;
+  background: #ff4500; color: #fff; font-size: 10px; font-weight: 700;
+  padding: 2px 8px; border-radius: 4px; margin-left: 6px; vertical-align: super;
+  animation: peakPulse 0.6s ease-in-out infinite alternate;
+}
+@keyframes peakPulse {
+  from { opacity: 0.7; transform: scale(0.9); }
+  to { opacity: 1; transform: scale(1.1); }
+}
+
+.video-disclaimer {
+  position: absolute; top: 12px; left: 0; right: 0;
+  text-align: center; font-size: 11px; color: rgba(255,255,255,0.5);
+  pointer-events: none; z-index: 4;
+}
+
+/* 播放按钮 */
+.play-overlay {
+  position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+  width: 56px; height: 56px; border-radius: 50%;
+  background: rgba(0,0,0,0.5); border: 2px solid rgba(255,255,255,0.6);
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; z-index: 5; transition: opacity 0.3s;
+}
+.play-overlay.hidden { opacity: 0; pointer-events: none; }
+.play-overlay::after { content: '▶'; color: #fff; font-size: 18px; margin-left: 3px; }
+
+/* 底部编辑区 - 固定在底部 */
+.editor-bottom {
+  position: fixed; bottom: 0; left: 0; right: 0;
+  max-width: 430px; margin: 0 auto;
+  display: flex; flex-direction: column;
+  background: rgba(30,30,30,0.98); border-radius: 16px 16px 0 0;
+  z-index: 10;
+  padding-bottom: env(safe-area-inset-bottom, 16px);
+  max-height: 35vh;
+}
+.editor-tabs { display: flex; flex-shrink: 0; padding: 12px 16px 0; }
+.editor-tab {
+  flex: 1; text-align: center; padding: 10px 0; font-size: 13px;
+  color: #888; cursor: pointer; position: relative;
+}
+.editor-tab.active { color: #fff; font-weight: 600; }
+.editor-tab.active::after {
+  content: ''; position: absolute; bottom: 0; left: 50%; transform: translateX(-50%);
+  width: 20px; height: 2px; background: #ff6b00; border-radius: 1px;
+}
+
+.editor-content { flex: 1; overflow-y: auto; overflow-x: hidden; -webkit-overflow-scrolling: touch; padding: 12px 16px; min-height: 0; min-width: 0; }
+.editor-panel { display: none; overflow: hidden; }
+.editor-panel.active { display: block; }
+
+/* 运镜编辑 - 横向卡片 */
+.angle-scroll { display: flex; gap: 10px; overflow-x: auto; padding-bottom: 8px; -webkit-overflow-scrolling: touch; cursor: grab; }
+.angle-scroll:active { cursor: grabbing; }
+.angle-scroll::-webkit-scrollbar { height: 3px; }
+.angle-scroll::-webkit-scrollbar-thumb { background: #555; border-radius: 2px; }
+.angle-scroll::-webkit-scrollbar-track { background: transparent; }
+.angle-card {
+  flex-shrink: 0; width: 110px; padding: 14px 10px; border-radius: 10px;
+  background: #3a3a3c; cursor: pointer; text-align: center;
+  border: 1.5px solid transparent; transition: all 0.2s;
+}
+.angle-card.active { border-color: #ff6b00; background: rgba(255,107,0,0.15); }
+.angle-card .a-icon { font-size: 22px; margin-bottom: 6px; }
+.angle-card .a-name { font-size: 12px; color: #eee; }
+
+/* 数据编辑 - pill 标签 */
+.data-section-title { font-size: 13px; color: #aaa; margin-bottom: 10px; }
+.data-pills { display: flex; flex-wrap: wrap; gap: 8px; }
+.data-pill {
+  display: flex; align-items: center; gap: 6px;
+  padding: 8px 14px; border-radius: 20px;
+  background: #3a3a3c; font-size: 13px; color: #ccc;
+  cursor: pointer; transition: all 0.2s; border: 1.5px solid transparent;
+}
+.data-pill .pill-icon { width: 18px; height: 18px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 10px; }
+.data-pill.selected { background: rgba(255,107,0,0.2); border-color: #ff6b00; color: #fff; }
+.data-pill.selected .pill-icon { background: #ff6b00; color: #fff; }
+.data-pill:not(.selected) .pill-icon { background: #555; color: #aaa; }
+
+/* 图表编辑 - 横向卡片带缩略图 */
+.chart-scroll { display: flex; gap: 12px; overflow-x: auto; padding-bottom: 8px; -webkit-overflow-scrolling: touch; cursor: grab; }
+.chart-scroll:active { cursor: grabbing; }
+.chart-scroll::-webkit-scrollbar { height: 3px; }
+.chart-scroll::-webkit-scrollbar-thumb { background: #555; border-radius: 2px; }
+.chart-scroll::-webkit-scrollbar-track { background: transparent; }
+.chart-card {
+  flex-shrink: 0; width: 150px; border-radius: 10px;
+  background: #3a3a3c; cursor: pointer; overflow: hidden;
+  border: 1.5px solid transparent; transition: all 0.2s;
+}
+.chart-card.active { border-color: #ff6b00; background: rgba(255,107,0,0.1); }
+.chart-card .chart-thumb { width: 100%; height: 100px; position: relative; }
+.chart-card .chart-thumb canvas { width: 100%; height: 100%; display: block; }
+.chart-card .chart-name { padding: 8px; font-size: 12px; color: #ddd; text-align: center; }
+
+/* Toast */
+.toast { position: fixed; top: 50%; left: 50%; transform: translate(-50%,-50%) scale(0.8); background: rgba(0,0,0,0.85); color: #fff; padding: 12px 24px; border-radius: 10px; font-size: 14px; z-index: 200; opacity: 0; pointer-events: none; transition: opacity 0.3s, transform 0.3s; }
+.toast.show { opacity: 1; transform: translate(-50%,-50%) scale(1); }
+
+/* 分享弹窗 */
+.editor-share-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.6); z-index: 50; display: none; align-items: flex-end; justify-content: center; }
+.editor-share-overlay.show { display: flex; }
+.editor-share-panel { background: #2c2c2e; border-radius: 16px 16px 0 0; width: 100%; max-width: 430px; padding: 20px 16px 30px; position: relative; }
+.editor-share-panel .close { position: absolute; top: 12px; right: 16px; background: none; border: none; color: #aaa; font-size: 20px; cursor: pointer; }
+.editor-share-panel .panel-title { text-align: center; font-size: 14px; color: #aaa; margin-bottom: 16px; }
+.share-icons { display: flex; justify-content: center; gap: 24px; }
+.share-icon { display: flex; flex-direction: column; align-items: center; gap: 6px; cursor: pointer; }
+.share-icon .ic { width: 48px; height: 48px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 20px; }
+.ic-wx { background: #07c160; } .ic-pyq { background: #07c160; } .ic-sph { background: #5856d6; } .ic-save { background: #555; }
+.share-icon .lbl { font-size: 11px; color: #aaa; }
+
+/* 退出确认 */
+.confirm-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.6); z-index: 150; display: none; align-items: center; justify-content: center; }
+.confirm-overlay.show { display: flex; }
+.confirm-dialog { background: #2c2c2e; border-radius: 14px; width: 280px; padding: 24px 20px 16px; text-align: center; color: #fff; }
+.confirm-dialog .d-title { font-size: 16px; font-weight: 600; margin-bottom: 8px; }
+.confirm-dialog .d-msg { font-size: 13px; color: #aaa; line-height: 1.5; margin-bottom: 20px; }
+.confirm-dialog .d-btns { display: flex; gap: 10px; }
+.confirm-dialog .d-btn { flex: 1; padding: 10px; border-radius: 8px; border: none; font-size: 15px; cursor: pointer; }
+.d-btn-cancel { background: #3a3a3c; color: #fff; }
+.d-btn-ok { background: #ff6b00; color: #fff; }
+</style>
+</head>
+<body>
+<div class="app">
+  <!-- ===== 页面1: 运动报告 ===== -->
+  <div id="page-report">
+    <img src="images/report-page.png" style="width:100%; display:block;" alt="运动报告">
+    <button class="share-btn-main" id="btn-open-share">✦ 分享</button>
+  </div>
+
+  <!-- ===== 分享样式弹窗 ===== -->
+  <div class="share-style-overlay" id="share-style-overlay">
+    <div class="share-style-panel">
+      <div class="share-style-header">
+        <span class="title">分享样式选择</span>
+        <button class="close" id="btn-share-style-close">✕</button>
+      </div>
+      <div class="share-style-options">
+        <div class="share-style-item" data-type="poster"><span class="icon">🖼</span><span class="name">水印海报</span></div>
+        <div class="share-style-item" data-type="trajectory"><span class="icon">▶</span><span class="name">轨迹视频</span></div>
+        <div class="share-style-item" data-type="report"><span class="icon">📊</span><span class="name">运动报告</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== 页面2: 视频编辑页 ===== -->
+  <div id="page-editor">
+    <div class="editor-topbar">
+      <button class="back" id="btn-editor-back">←</button>
+      <span class="title">轨迹视频</span>
+      <button class="share" id="btn-editor-share">分享</button>
+    </div>
+
+    <!-- 视频预览区 -->
+    <div class="video-preview">
+      <canvas id="three-canvas"></canvas>
+      <div class="video-disclaimer">该视频展示仅作为运镜展示非最终实际视频效果</div>
+      <!-- 发球速度实时显示 -->
+      <div class="speed-display" id="speed-display">
+        <div class="speed-label">发球速度</div>
+        <div class="speed-value"><span id="speed-value">0</span><span class="speed-max-tag">MAX</span></div>
+        <div class="speed-unit">km/h</div>
+      </div>
+      <!-- 播放按钮 -->
+      <div class="play-overlay" id="play-overlay"></div>
+      <!-- 右侧雷达图叠加 -->
+      <div class="card-chart-area" id="card-chart-area"><canvas id="overlay-chart"></canvas></div>
+      <!-- 底部数据卡片叠加 -->
+      <div class="card-overlay" id="card-overlay">
+        <div class="card-top-row">
+          <div class="card-user"><div class="av">🐱</div><span class="uname">Jennie<br>2023/8/1</span></div>
+          <div class="card-brand"><div class="dot"></div><span>小米运动健康</span></div>
+        </div>
+        <div class="card-big-num">123<span class="card-big-unit">公里/小时</span></div>
+        <div class="card-speed-bar"></div>
+        <div class="card-speed-labels"><span style="color:#4caf50">慢速</span><span style="color:#ff5722">快速</span></div>
+        <div class="card-subs" id="card-subs"></div>
+      </div>
+    </div>
+
+    <!-- 底部编辑区 -->
+    <div class="editor-bottom">
+      <div class="editor-tabs">
+        <div class="editor-tab active" data-tab="angle">运镜选择</div>
+        <div class="editor-tab" data-tab="data">数据展示</div>
+        <div class="editor-tab" data-tab="chart">图表展示</div>
+      </div>
+      <div class="editor-content">
+        <!-- 运镜面板 -->
+        <div class="editor-panel active" id="panel-angle">
+          <div class="angle-scroll" id="angle-scroll"></div>
+        </div>
+        <!-- 数据面板 -->
+        <div class="editor-panel" id="panel-data">
+          <div class="data-section-title">数据信息</div>
+          <div class="data-pills" id="data-pills"></div>
+        </div>
+        <!-- 图表面板 -->
+        <div class="editor-panel" id="panel-chart">
+          <div class="chart-scroll" id="chart-scroll"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 分享弹窗 -->
+    <div class="editor-share-overlay" id="editor-share-overlay">
+      <div class="editor-share-panel">
+        <button class="close" id="btn-editor-share-close">✕</button>
+        <div class="panel-title">分享到</div>
+        <div class="share-icons">
+          <div class="share-icon"><div class="ic ic-wx">💬</div><span class="lbl">微信</span></div>
+          <div class="share-icon"><div class="ic ic-pyq">⭕</div><span class="lbl">朋友圈</span></div>
+          <div class="share-icon"><div class="ic ic-sph">▶</div><span class="lbl">视频号</span></div>
+          <div class="share-icon"><div class="ic ic-save">💾</div><span class="lbl">保存</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+<!-- 退出确认 -->
+<div class="confirm-overlay" id="confirm-overlay">
+  <div class="confirm-dialog">
+    <div class="d-title">编辑记录将不会保存</div>
+    <div class="d-msg">已编辑的内容将不会保存，下次进入需要重新编辑。是否退出？</div>
+    <div class="d-btns">
+      <button class="d-btn d-btn-cancel" id="btn-confirm-cancel">取消</button>
+      <button class="d-btn d-btn-ok" id="btn-confirm-ok">确认退出</button>
+    </div>
+  </div>
+</div>
+
+<script type="importmap">
+{ "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js", "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/" } }
+</script>
+<script type="module">
+import * as THREE from 'three';
+import { OBJLoader } from 'three/addons/loaders/OBJLoader.js';
+
+// ============ 状态 ============
+let hasEdited = false;
+let isPlaying = false;
+let animProgress = 0;
+const MOVE_DURATION = 6000;
+const HOLD_DURATION = 2500;
+const TOTAL_DURATION = MOVE_DURATION + HOLD_DURATION;
+let lastTime = 0;
+let currentAngle = 'orbit';
+
+// ============ 数据 ============
+const angles = [
+  { key: 'orbit', name: '环绕聚焦', icon: '🔄' },
+  { key: 'pushin', name: '跟随推进', icon: '🎬' },
+  { key: 'bullet', name: '子弹时间', icon: '⚡' },
+  { key: 'autocut', name: '多机位剪辑', icon: '🎥' },
+  { key: 'shoulder', name: '肩上视角', icon: '👁' },
+];
+
+const subDataList = [
+  { key: 'max_serve', label: '最大发球速度', value: 123, unit: '公里/小时', icon: '🎾' },
+  { key: 'max_hit', label: '最大击球速度', value: 132, unit: '公里/小时', icon: '🎾' },
+  { key: 'max_rally', label: '最长连拍', value: 2331, unit: '千卡', icon: '🔗' },
+  { key: 'avg_hr', label: '平均心率', value: 124, unit: 'bpm', icon: '❤️' },
+  { key: 'max_speed', label: '最大拍速', value: 168, unit: 'km/h', icon: '🎾' },
+  { key: 'avg_speed', label: '平均拍速', value: 108, unit: 'km/h', icon: '🎾' },
+];
+let selectedSubs = ['max_serve', 'max_hit', 'max_rally'];
+
+const charts = [
+  { key: 'radar', name: '训练表现图' },
+  { key: 'heartrate', name: '心率曲线' },
+  { key: 'speed_bar', name: '速度柱状图' },
+  { key: 'hands', name: '正反手分布' },
+  { key: 'stroke', name: '击球姿势分布' },
+];
+let selectedChart = 'radar';
+
+// ============ 页面1 → 分享选择 ============
+document.getElementById('btn-open-share').addEventListener('click', () => {
+  document.getElementById('share-style-overlay').classList.add('show');
+});
+document.getElementById('btn-share-style-close').addEventListener('click', () => {
+  document.getElementById('share-style-overlay').classList.remove('show');
+});
+document.getElementById('share-style-overlay').addEventListener('click', e => {
+  if (e.target === e.currentTarget) e.currentTarget.classList.remove('show');
+});
+document.querySelectorAll('.share-style-item').forEach(item => {
+  item.addEventListener('click', () => {
+    if (item.dataset.type === 'trajectory') {
+      document.getElementById('share-style-overlay').classList.remove('show');
+      document.getElementById('page-report').classList.add('hidden');
+      document.getElementById('page-editor').classList.add('active');
+      initThreeScene();
+      renderAnglePanel();
+      renderDataPanel();
+      renderChartPanel();
+      updateCardSubs();
+    } else {
+      showToast('此 Demo 仅演示轨迹视频');
+    }
+  });
+});
+
+// ============ 编辑页返回 ============
+document.getElementById('btn-editor-back').addEventListener('click', () => {
+  if (hasEdited) {
+    document.getElementById('confirm-overlay').classList.add('show');
+  } else {
+    exitEditor();
+  }
+});
+document.getElementById('btn-confirm-cancel').addEventListener('click', () => {
+  document.getElementById('confirm-overlay').classList.remove('show');
+});
+document.getElementById('btn-confirm-ok').addEventListener('click', () => {
+  document.getElementById('confirm-overlay').classList.remove('show');
+  exitEditor();
+});
+function exitEditor() {
+  document.getElementById('page-editor').classList.remove('active');
+  document.getElementById('page-report').classList.remove('hidden');
+  hasEdited = false; isPlaying = false; animProgress = 0;
+}
+
+// ============ 编辑页分享 ============
+document.getElementById('btn-editor-share').addEventListener('click', () => {
+  document.getElementById('editor-share-overlay').classList.add('show');
+});
+document.getElementById('btn-editor-share-close').addEventListener('click', () => {
+  document.getElementById('editor-share-overlay').classList.remove('show');
+});
+document.getElementById('editor-share-overlay').addEventListener('click', e => {
+  if (e.target === e.currentTarget) e.currentTarget.classList.remove('show');
+});
+
+// ============ Tab切换 ============
+document.querySelectorAll('.editor-tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    document.querySelectorAll('.editor-tab').forEach(t => t.classList.remove('active'));
+    tab.classList.add('active');
+    document.querySelectorAll('.editor-panel').forEach(p => p.classList.remove('active'));
+    document.getElementById('panel-' + tab.dataset.tab).classList.add('active');
+    if (tab.dataset.tab === 'chart') setTimeout(renderChartThumbs, 80);
+    // 数据/图表编辑时回到起始位置暂停
+    if (tab.dataset.tab === 'data' || tab.dataset.tab === 'chart') {
+      resetToStart();
+    }
+  });
+});
+
+// 回到定格状态（轨迹填满），显示卡片
+function resetToStart() {
+  animProgress = 1; isPlaying = false;
+  // 轨迹保持填满
+  if (window._fillMesh) window._fillMesh.material.uniforms.uProgress.value = 1.0;
+  if (sceneCenter && hitPoint) {
+    const cam = cameraSchemes[currentAngle](1, sceneCenter, hitPoint);
+    camera.position.copy(cam.pos);
+    camera.lookAt(cam.look);
+  }
+  updatePlayerModel(0.32); // 静态时保持击球姿势
+  document.getElementById('play-overlay').classList.remove('hidden');
+  document.getElementById('card-overlay').classList.add('show');
+  document.getElementById('card-chart-area').classList.add('show');
+}
+
+// ============ 运镜面板（横向卡片） ============
+function renderAnglePanel() {
+  const c = document.getElementById('angle-scroll');
+  c.innerHTML = '';
+  angles.forEach(a => {
+    const el = document.createElement('div');
+    el.className = 'angle-card' + (currentAngle === a.key ? ' active' : '');
+    el.innerHTML = `<div class="a-icon">${a.icon}</div><div class="a-name">${a.name}</div>`;
+    el.addEventListener('click', () => {
+      currentAngle = a.key; hasEdited = true;
+      setCameraPreset(a.key);
+      renderAnglePanel();
+    });
+    c.appendChild(el);
+  });
+}
+
+// ============ 数据面板（pill标签） ============
+function renderDataPanel() {
+  const c = document.getElementById('data-pills');
+  c.innerHTML = '';
+  subDataList.forEach(d => {
+    const sel = selectedSubs.includes(d.key);
+    const el = document.createElement('div');
+    el.className = 'data-pill' + (sel ? ' selected' : '');
+    el.innerHTML = `<div class="pill-icon">${sel ? '✓' : '○'}</div><span>${d.label}</span>`;
+    el.addEventListener('click', () => {
+      if (selectedSubs.includes(d.key)) {
+        selectedSubs = selectedSubs.filter(k => k !== d.key);
+      } else if (selectedSubs.length >= 3) {
+        showToast('最多可选择3项数据'); return;
+      } else {
+        selectedSubs.push(d.key);
+      }
+      hasEdited = true;
+      renderDataPanel();
+      updateCardSubs();
+      resetToStart();
+    });
+    c.appendChild(el);
+  });
+}
+
+// ============ 图表面板（横向卡片） ============
+function renderChartPanel() {
+  const c = document.getElementById('chart-scroll');
+  c.innerHTML = '';
+  charts.forEach(ch => {
+    const el = document.createElement('div');
+    el.className = 'chart-card' + (selectedChart === ch.key ? ' active' : '');
+    el.innerHTML = `<div class="chart-thumb"><canvas id="thumb-${ch.key}"></canvas></div><div class="chart-name">${ch.name}</div>`;
+    el.addEventListener('click', () => {
+      selectedChart = ch.key; hasEdited = true;
+      renderChartPanel();
+      updateOverlayChart();
+      setTimeout(renderChartThumbs, 80);
+      resetToStart();
+    });
+    c.appendChild(el);
+  });
+  setTimeout(renderChartThumbs, 80);
+}
+
+function renderChartThumbs() {
+  charts.forEach(ch => {
+    const el = document.getElementById('thumb-' + ch.key);
+    if (!el) return;
+    const p = el.parentElement;
+    el.width = p.offsetWidth * 2; el.height = p.offsetHeight * 2;
+    const ctx = el.getContext('2d'); ctx.scale(2, 2);
+    drawChart(ctx, p.offsetWidth, p.offsetHeight, ch.key);
+  });
+}
+
+// ============ 更新卡片副数据 ============
+function updateCardSubs() {
+  const c = document.getElementById('card-subs');
+  c.innerHTML = '';
+  selectedSubs.forEach(key => {
+    const d = subDataList.find(x => x.key === key);
+    if (!d) return;
+    const el = document.createElement('div');
+    el.className = 'card-sub';
+    el.innerHTML = `<div class="sl">${d.label}</div><div class="sv">${d.value}</div><div class="su">${d.unit}</div>`;
+    c.appendChild(el);
+  });
+}
+
+// ============ 更新叠加雷达 ============
+function updateOverlayChart() {
+  const el = document.getElementById('overlay-chart');
+  const p = el.parentElement;
+  el.width = p.offsetWidth * 2; el.height = p.offsetHeight * 2;
+  const ctx = el.getContext('2d'); ctx.scale(2, 2);
+  drawChart(ctx, p.offsetWidth, p.offsetHeight, selectedChart);
+}
+
+// ============ Toast ============
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2000);
+}
+
+// ============ Three.js ============
+let renderer, scene, camera, hitMarker;
+let wristCurve, curvePoints, sceneCenter, hitPoint;
+const shoulderPos = new THREE.Vector3(-0.35, 1.5, -0.1);
+let threeInited = false;
+
+// 全貌展示视角（正前方偏右，中等高度，清晰展示轨迹弧线）
+function overviewPos(center) { return new THREE.Vector3(center.x + 0.3, center.y + 0.1, center.z + 2.8); }
+function overviewLook(center) { return center.clone().add(new THREE.Vector3(0, 0.15, 0)); }
+function blendToOverview(rawCamera, t, center, blendStart) {
+  if (t <= blendStart) return rawCamera;
+  const blend = (t - blendStart) / (1 - blendStart);
+  const ease = blend * blend * (3 - 2 * blend);
+  const overPos = overviewPos(center);
+  const overLook = overviewLook(center);
+  return {
+    pos: new THREE.Vector3().lerpVectors(rawCamera.pos, overPos, ease),
+    look: new THREE.Vector3().lerpVectors(rawCamera.look, overLook, ease)
+  };
+}
+
+// 5种运镜方案
+const cameraSchemes = {
+  orbit: (t, center) => {
+    const angle = -Math.PI/2 + t * Math.PI * 1.2;
+    const r = 1.8 - t * 0.3;
+    const y = 1.2 - t * 0.2;
+    const raw = {
+      pos: new THREE.Vector3(center.x + r*Math.cos(angle), center.y + y, center.z + r*Math.sin(angle)),
+      look: center.clone().add(new THREE.Vector3(0, 0.2 * (1-t), 0))
+    };
+    return blendToOverview(raw, t, center, 0.75);
+  },
+  pushin: (t, center, hp) => {
+    const startPos = new THREE.Vector3(center.x - 2.5, center.y + 1.5, center.z + 2);
+    const endPos = hp.clone().add(new THREE.Vector3(0.3, 0.15, 0.4));
+    const pushT = Math.min(t / 0.7, 1);
+    const ease = pushT * pushT;
+    const raw = {
+      pos: new THREE.Vector3().lerpVectors(startPos, endPos, ease),
+      look: new THREE.Vector3().lerpVectors(center, hp, ease * 0.8 + 0.2)
+    };
+    return blendToOverview(raw, t, center, 0.7);
+  },
+  bullet: (t, center, hp) => {
+    let angle, r, y, lookTarget;
+    if (t < 0.35) {
+      angle = -Math.PI * 0.6; r = 2.0; y = 1.0; lookTarget = center.clone();
+    } else if (t < 0.6) {
+      const lt = (t - 0.35) / 0.25;
+      angle = -Math.PI * 0.6 + lt * Math.PI * 1.5; r = 1.5; y = 0.8 + lt * 0.3; lookTarget = hp.clone();
+    } else {
+      const lt = (t - 0.6) / 0.15;
+      angle = -Math.PI * 0.6 + Math.PI * 1.5 + Math.min(lt, 1) * 0.3;
+      r = 1.5 + Math.min(lt, 1) * 0.3; y = 1.1; lookTarget = hp.clone();
+    }
+    const raw = {
+      pos: new THREE.Vector3(center.x + r*Math.cos(angle), center.y + y, center.z + r*Math.sin(angle)),
+      look: lookTarget
+    };
+    return blendToOverview(raw, t, center, 0.75);
+  },
+  autocut: (t, center, hp) => {
+    let raw;
+    if (t < 0.25) {
+      raw = { pos: new THREE.Vector3(center.x + 2, center.y + 0.3, center.z), look: center.clone().add(new THREE.Vector3(0, 0.3, 0)) };
+    } else if (t < 0.5) {
+      raw = { pos: new THREE.Vector3(center.x, center.y + 0.5, center.z + 2), look: hp.clone().lerp(center, 0.3) };
+    } else {
+      const lt = (t - 0.5) / 0.25;
+      raw = { pos: new THREE.Vector3(center.x + Math.min(lt,1)*0.3, center.y + 2.5, center.z + 0.3), look: hp.clone() };
+    }
+    return blendToOverview(raw, t, center, 0.75);
+  },
+  shoulder: (t, center, hp) => {
+    const sway = Math.sin(t * Math.PI * 2) * 0.02;
+    const camPos = new THREE.Vector3(
+      shoulderPos.x - 0.6 + sway,
+      shoulderPos.y + 1.0 + t * 0.1,
+      shoulderPos.z - 1.8 + t * 0.3
+    );
+    const lookTarget = new THREE.Vector3().lerpVectors(center, hp, Math.min(t / 0.7, 1));
+    const raw = { pos: camPos, look: lookTarget };
+    return blendToOverview(raw, t, center, 0.7);
+  }
+};
+
+
+// ============ OBJ 人物模型 + GPU 蒙皮动画 ============
+let playerModel = null;
+let playerMaterial = null;
+
+// 骨骼定义 (基于模型高度 1.898，X范围 -0.41~0.41)
+// 0=hip, 1=spine, 2=rUpperArm, 3=rForearm, 4=lUpperArm, 5=lForearm, 6=rThigh, 7=rShin, 8=lThigh, 9=lShin
+const BONE_COUNT = 10;
+const BONE_PIVOTS_Y = [0.892, 1.30, 1.55, 1.25, 1.55, 1.15, 0.892, 0.50, 0.892, 0.50];
+const BONE_PIVOTS_X = [0.00, 0.00, 0.18, 0.22, -0.18, -0.25, 0.08, 0.08, -0.08, -0.08];
+
+// 发球动画关键帧
+// 坐标系: +Y=上, +Z=面向球网, +X=右手侧
+// rotX: 绕X轴(正=上方向前倾,对肢体=远端前移), rotY: 绕Y轴(正=右转), rotZ: 绕Z轴(正=右倾)
+// 模型静态姿态是 trophy pose (t=0.20)，其他帧为相对增量
+//
+// 真实网球发球动力链:
+// 准备→抛球(左臂上抛,右臂下摆)→背弓/trophy(右臂屈肘在身后,身体后仰侧转,膝盖弯曲)
+// →爆发(蹬腿跳起,转体,右臂向上伸直击球)→随挥(右臂过体下落,身体前倾)→收拍
+const SERVE_KEYFRAMES = [
+  { t: 0.00, // 准备站立 — 身体侧对球网,双臂在前低位,重心稳定
+    hipY: -0.02, hipRotX: 0.15, hipRotY: -0.4, hipRotZ: 0.0,
+    spineRotX: 0.2, spineRotY: -0.3, spineRotZ: 0.0,
+    rArmRotX: 1.2, rArmRotY: 0.0, rArmRotZ: -0.3, rForeRotX: -0.6,
+    lArmRotX: 0.8, lArmRotY: 0.0, lArmRotZ: 0.2, lForeRotX: -0.3,
+    rLegRotX: 0.05, rShinRotX: 0.08,
+    lLegRotX: 0.08, lShinRotX: 0.1,
+  },
+  { t: 0.08, // 抛球启动 — 左臂开始上举抛球,右臂向下摆(钟摆下降)
+    hipY: 0.0, hipRotX: 0.05, hipRotY: -0.3, hipRotZ: 0.03,
+    spineRotX: 0.1, spineRotY: -0.2, spineRotZ: 0.05,
+    rArmRotX: 0.6, rArmRotY: 0.2, rArmRotZ: 0.0, rForeRotX: 0.1,
+    lArmRotX: -0.7, lArmRotY: 0.0, lArmRotZ: 0.1, lForeRotX: -0.1,
+    rLegRotX: 0.03, rShinRotX: 0.12,
+    lLegRotX: 0.0, lShinRotX: 0.05,
+  },
+  { t: 0.15, // 右臂上摆+左臂完成抛球 — 深蹲蓄力,身体开始后仰
+    hipY: 0.0, hipRotX: -0.05, hipRotY: -0.15, hipRotZ: 0.05,
+    spineRotX: -0.08, spineRotY: -0.1, spineRotZ: 0.06,
+    rArmRotX: 0.15, rArmRotY: 0.3, rArmRotZ: 0.2, rForeRotX: 0.3,
+    lArmRotX: -0.9, lArmRotY: 0.0, lArmRotZ: 0.0, lForeRotX: -0.05,
+    rLegRotX: 0.08, rShinRotX: 0.25,
+    lLegRotX: 0.05, lShinRotX: 0.18,
+  },
+  { t: 0.20, // Trophy pose — 模型原始姿态(右臂微量偏移防止"同时归零")
+    hipY: 0.0, hipRotX: 0.0, hipRotY: 0.0, hipRotZ: 0.0,
+    spineRotX: 0.0, spineRotY: 0.0, spineRotZ: 0.0,
+    rArmRotX: 0.05, rArmRotY: 0.0, rArmRotZ: 0.0, rForeRotX: 0.05,
+    lArmRotX: 0.0, lArmRotY: 0.0, lArmRotZ: 0.0, lForeRotX: 0.0,
+    rLegRotX: 0.0, rShinRotX: 0.0,
+    lLegRotX: 0.0, lShinRotX: 0.0,
+  },
+  { t: 0.26, // 蹬腿发力+转体开始 — 臀部先转,肩膀延迟(X-factor扭转蓄能)
+    hipY: 0.06, hipRotX: 0.08, hipRotY: 0.2, hipRotZ: -0.03,
+    spineRotX: 0.05, spineRotY: 0.03, spineRotZ: -0.04,
+    rArmRotX: -0.3, rArmRotY: 0.1, rArmRotZ: -0.05, rForeRotX: -0.2,
+    lArmRotX: 0.3, lArmRotY: 0.1, lArmRotZ: 0.1, lForeRotX: 0.2,
+    rLegRotX: -0.12, rShinRotX: -0.15,
+    lLegRotX: -0.05, lShinRotX: -0.08,
+  },
+  { t: 0.32, // 击球瞬间 — 最高点,右臂完全伸直,C形侧弯,充分跳起
+    hipY: 0.18, hipRotX: 0.15, hipRotY: 0.45, hipRotZ: -0.12,
+    spineRotX: 0.18, spineRotY: 0.35, spineRotZ: -0.12,
+    rArmRotX: -1.1, rArmRotY: 0.2, rArmRotZ: -0.15, rForeRotX: -1.4,
+    lArmRotX: 0.9, lArmRotY: -0.2, lArmRotZ: 0.15, lForeRotX: 0.7,
+    rLegRotX: -0.15, rShinRotX: -0.1,
+    lLegRotX: 0.05, lShinRotX: 0.05,
+  },
+  { t: 0.40, // 随挥上半段 — 右臂越过头顶向左前方下落,身体大幅前倾+继续转
+    hipY: 0.05, hipRotX: 0.35, hipRotY: 0.55, hipRotZ: -0.08,
+    spineRotX: 0.4, spineRotY: 0.4, spineRotZ: -0.1,
+    rArmRotX: 0.8, rArmRotY: -0.4, rArmRotZ: -0.5, rForeRotX: 0.4,
+    lArmRotX: 0.5, lArmRotY: -0.1, lArmRotZ: 0.4, lForeRotX: 0.3,
+    rLegRotX: 0.1, rShinRotX: 0.05,
+    lLegRotX: 0.2, lShinRotX: 0.3,
+  },
+  { t: 0.50, // 随挥下半段 — 右臂到达左腰侧,身体前倾更大,左脚落地
+    hipY: 0.02, hipRotX: 0.4, hipRotY: 0.5, hipRotZ: -0.05,
+    spineRotX: 0.45, spineRotY: 0.35, spineRotZ: -0.08,
+    rArmRotX: 1.5, rArmRotY: -0.5, rArmRotZ: -0.4, rForeRotX: 0.6,
+    lArmRotX: 0.4, lArmRotY: 0.0, lArmRotZ: 0.3, lForeRotX: 0.2,
+    rLegRotX: 0.15, rShinRotX: 0.1,
+    lLegRotX: 0.1, lShinRotX: 0.15,
+  },
+  { t: 0.62, // 收拍还原 — 回到自然直立
+    hipY: 0.0, hipRotX: 0.12, hipRotY: 0.3, hipRotZ: 0.0,
+    spineRotX: 0.1, spineRotY: 0.2, spineRotZ: 0.0,
+    rArmRotX: 1.0, rArmRotY: -0.2, rArmRotZ: -0.2, rForeRotX: 0.1,
+    lArmRotX: 0.3, lArmRotY: 0.0, lArmRotZ: 0.1, lForeRotX: 0.0,
+    rLegRotX: 0.05, rShinRotX: 0.05,
+    lLegRotX: 0.05, lShinRotX: 0.05,
+  },
+];
+
+function lerpServeKeyframes(camT) {
+  const kf = SERVE_KEYFRAMES;
+  if (camT <= kf[0].t) return kf[0];
+  if (camT >= kf[kf.length - 1].t) return kf[kf.length - 1];
+  for (let i = 0; i < kf.length - 1; i++) {
+    if (camT >= kf[i].t && camT <= kf[i + 1].t) {
+      const localT = (camT - kf[i].t) / (kf[i + 1].t - kf[i].t);
+      const ease = localT * localT * (3 - 2 * localT);
+      const result = {};
+      for (const key of Object.keys(kf[i])) {
+        if (key === 't') continue;
+        result[key] = kf[i][key] + (kf[i + 1][key] - kf[i][key]) * ease;
+      }
+      return result;
+    }
+  }
+  return kf[kf.length - 1];
+}
+
+// 为每个顶点计算骨骼权重（基于距离，2骨骼混合）
+function computeBoneWeights(positions) {
+  const count = positions.count;
+  const boneIndices = new Float32Array(count * 2);
+  const boneWeights = new Float32Array(count * 2);
+
+  for (let i = 0; i < count; i++) {
+    const vx = positions.getX(i);
+    const vy = positions.getY(i);
+
+    const dists = [];
+    for (let b = 0; b < BONE_COUNT; b++) {
+      const dy = vy - BONE_PIVOTS_Y[b];
+      const dx = vx - BONE_PIVOTS_X[b];
+      // X 方向权重 ×4 以更好区分左右肢体
+      const d = Math.sqrt(dy * dy + dx * dx * 4.0);
+      dists.push({ idx: b, dist: d });
+    }
+    dists.sort((a, b) => a.dist - b.dist);
+
+    const d0 = Math.max(dists[0].dist, 0.001);
+    const d1 = Math.max(dists[1].dist, 0.001);
+    const w0 = 1.0 / d0;
+    const w1 = 1.0 / d1;
+    const wSum = w0 + w1;
+
+    boneIndices[i * 2] = dists[0].idx;
+    boneIndices[i * 2 + 1] = dists[1].idx;
+    boneWeights[i * 2] = w0 / wSum;
+    boneWeights[i * 2 + 1] = w1 / wSum;
+  }
+  return { boneIndices, boneWeights };
+}
+
+// GPU 蒙皮 Shader — 支持 XYZ 三轴旋转
+function createSkinningMaterial() {
+  return new THREE.ShaderMaterial({
+    uniforms: {
+      boneRotations: { value: new Float32Array(BONE_COUNT * 3) }, // [rotX, rotY, rotZ] per bone
+      bonePivotsY: { value: new Float32Array(BONE_PIVOTS_Y) },
+      bonePivotsX: { value: new Float32Array(BONE_PIVOTS_X) },
+      rootOffset: { value: new THREE.Vector3(0, 0, 0) },
+      rootRotX: { value: 0.0 },
+      rootRotY: { value: 0.0 },
+      rootRotZ: { value: 0.0 },
+    },
+    vertexShader: `
+      attribute vec2 boneIdx;
+      attribute vec2 boneWt;
+      uniform float boneRotations[${BONE_COUNT * 3}];
+      uniform float bonePivotsY[${BONE_COUNT}];
+      uniform float bonePivotsX[${BONE_COUNT}];
+      uniform vec3 rootOffset;
+      uniform float rootRotX;
+      uniform float rootRotY;
+      uniform float rootRotZ;
+
+      varying vec3 vNormal;
+      varying vec3 vPosition;
+
+      vec3 rotateAroundPivot(vec3 pos, float pivotY, float pivotX, float aX, float aY, float aZ) {
+        // 平移到 pivot
+        pos.x -= pivotX;
+        pos.y -= pivotY;
+
+        // 绕 X 轴 (前后倾斜: Y/Z 平面)
+        if (abs(aX) > 0.001) {
+          float c = cos(aX); float s = sin(aX);
+          float y2 = pos.y * c - pos.z * s;
+          float z2 = pos.y * s + pos.z * c;
+          pos.y = y2; pos.z = z2;
+        }
+        // 绕 Y 轴 (水平转体: X/Z 平面)
+        if (abs(aY) > 0.001) {
+          float c = cos(aY); float s = sin(aY);
+          float x2 = pos.x * c + pos.z * s;
+          float z2 = -pos.x * s + pos.z * c;
+          pos.x = x2; pos.z = z2;
+        }
+        // 绕 Z 轴 (侧倾: X/Y 平面)
+        if (abs(aZ) > 0.001) {
+          float c = cos(aZ); float s = sin(aZ);
+          float x2 = pos.x * c - pos.y * s;
+          float y2 = pos.x * s + pos.y * c;
+          pos.x = x2; pos.y = y2;
+        }
+
+        pos.x += pivotX;
+        pos.y += pivotY;
+        return pos;
+      }
+
+      vec3 applyBone(vec3 pos, int boneId) {
+        float rX = boneRotations[boneId * 3];
+        float rY = boneRotations[boneId * 3 + 1];
+        float rZ = boneRotations[boneId * 3 + 2];
+        if (abs(rX) < 0.001 && abs(rY) < 0.001 && abs(rZ) < 0.001) return pos;
+        return rotateAroundPivot(pos, bonePivotsY[boneId], bonePivotsX[boneId], rX, rY, rZ);
+      }
+
+      void main() {
+        vec3 pos = position;
+
+        // 骨骼蒙皮（2骨骼加权混合）
+        int b0 = int(boneIdx.x);
+        int b1 = int(boneIdx.y);
+        vec3 p0 = applyBone(pos, b0);
+        vec3 p1 = applyBone(pos, b1);
+        pos = p0 * boneWt.x + p1 * boneWt.y;
+
+        // 根节点变换（整体: 转体→前倾→侧倾）
+        pos.x -= 0.0; pos.y -= bonePivotsY[0];
+        // Y rotation (转体)
+        if (abs(rootRotY) > 0.001) {
+          float c = cos(rootRotY); float s = sin(rootRotY);
+          float x2 = pos.x * c + pos.z * s;
+          float z2 = -pos.x * s + pos.z * c;
+          pos.x = x2; pos.z = z2;
+        }
+        // X rotation (前倾)
+        if (abs(rootRotX) > 0.001) {
+          float c = cos(rootRotX); float s = sin(rootRotX);
+          float y2 = pos.y * c - pos.z * s;
+          float z2 = pos.y * s + pos.z * c;
+          pos.y = y2; pos.z = z2;
+        }
+        // Z rotation (侧倾)
+        if (abs(rootRotZ) > 0.001) {
+          float c = cos(rootRotZ); float s = sin(rootRotZ);
+          float x2 = pos.x * c - pos.y * s;
+          float y2 = pos.x * s + pos.y * c;
+          pos.x = x2; pos.y = y2;
+        }
+        pos.y += bonePivotsY[0];
+
+        pos += rootOffset;
+
+        vNormal = normalMatrix * normal;
+        vPosition = (modelViewMatrix * vec4(pos, 1.0)).xyz;
+        gl_Position = projectionMatrix * modelViewMatrix * vec4(pos, 1.0);
+      }
+    `,
+    fragmentShader: `
+      varying vec3 vNormal;
+      varying vec3 vPosition;
+
+      void main() {
+        vec3 lightDir = normalize(vec3(0.5, 1.0, 0.8));
+        vec3 norm = normalize(vNormal);
+        float diff = max(dot(norm, lightDir), 0.0) * 0.7 + 0.3;
+
+        vec3 viewDir = normalize(-vPosition);
+        vec3 halfDir = normalize(lightDir + viewDir);
+        float spec = pow(max(dot(norm, halfDir), 0.0), 30.0) * 0.3;
+
+        vec3 baseColor = vec3(0.85, 0.85, 0.85);
+        gl_FragColor = vec4(baseColor * diff + vec3(spec), 1.0);
+      }
+    `,
+  });
+}
+
+function buildPlayerSkeleton(objGroup, scene) {
+  const S = 0.68;
+
+  // 合并所有子 mesh 为一个 geometry
+  let mergedGeo = null;
+  objGroup.traverse(child => {
+    if (!child.isMesh) return;
+    const geo = child.geometry.clone();
+    if (!mergedGeo) { mergedGeo = geo; }
+    else {
+      const pos1 = mergedGeo.getAttribute('position');
+      const pos2 = geo.getAttribute('position');
+      const norm1 = mergedGeo.getAttribute('normal');
+      const norm2 = geo.getAttribute('normal');
+      const idx1 = mergedGeo.getIndex();
+      const idx2 = geo.getIndex();
+
+      const newPos = new Float32Array(pos1.count * 3 + pos2.count * 3);
+      newPos.set(new Float32Array(pos1.array), 0);
+      newPos.set(new Float32Array(pos2.array), pos1.count * 3);
+
+      const newNorm = new Float32Array((norm1 ? norm1.count : pos1.count) * 3 + (norm2 ? norm2.count : pos2.count) * 3);
+      if (norm1) newNorm.set(new Float32Array(norm1.array), 0);
+      if (norm2) newNorm.set(new Float32Array(norm2.array), (norm1 ? norm1.count : pos1.count) * 3);
+
+      const offset = pos1.count;
+      let newIdx;
+      if (idx1 && idx2) {
+        newIdx = new Uint32Array(idx1.count + idx2.count);
+        newIdx.set(new Uint32Array(idx1.array), 0);
+        for (let i = 0; i < idx2.count; i++) newIdx[idx1.count + i] = idx2.array[i] + offset;
+      }
+
+      mergedGeo = new THREE.BufferGeometry();
+      mergedGeo.setAttribute('position', new THREE.BufferAttribute(newPos, 3));
+      mergedGeo.setAttribute('normal', new THREE.BufferAttribute(newNorm, 3));
+      if (newIdx) mergedGeo.setIndex(new THREE.BufferAttribute(newIdx, 1));
+    }
+  });
+
+  if (!mergedGeo) return;
+
+  // 计算骨骼权重
+  const positions = mergedGeo.getAttribute('position');
+  const { boneIndices, boneWeights } = computeBoneWeights(positions);
+  mergedGeo.setAttribute('boneIdx', new THREE.BufferAttribute(boneIndices, 2));
+  mergedGeo.setAttribute('boneWt', new THREE.BufferAttribute(boneWeights, 2));
+
+  // 创建蒙皮材质
+  playerMaterial = createSkinningMaterial();
+
+  const mesh = new THREE.Mesh(mergedGeo, playerMaterial);
+  mesh.scale.set(S, S, S);
+  mesh.position.set(0.03, 0, 0.22);
+  scene.add(mesh);
+  playerModel = mesh;
+}
+
+function updatePlayerModel(camT) {
+  if (!playerMaterial) return;
+  const p = lerpServeKeyframes(camT);
+  const rots = playerMaterial.uniforms.boneRotations.value;
+
+  // bone 0: hip — 微调由 root 统一处理
+  rots[0] = 0; rots[1] = 0; rots[2] = 0;
+  // bone 1: spine (躯干)
+  rots[3] = p.spineRotX; rots[4] = p.spineRotY; rots[5] = p.spineRotZ;
+  // bone 2: rUpperArm (右上臂/持拍手)
+  rots[6] = p.rArmRotX; rots[7] = p.rArmRotY; rots[8] = p.rArmRotZ;
+  // bone 3: rForearm (右前臂)
+  rots[9] = p.rForeRotX; rots[10] = 0; rots[11] = 0;
+  // bone 4: lUpperArm (左上臂/抛球手)
+  rots[12] = p.lArmRotX; rots[13] = p.lArmRotY; rots[14] = p.lArmRotZ;
+  // bone 5: lForearm (左前臂)
+  rots[15] = p.lForeRotX; rots[16] = 0; rots[17] = 0;
+  // bone 6: rThigh (右大腿)
+  rots[18] = p.rLegRotX; rots[19] = 0; rots[20] = 0;
+  // bone 7: rShin (右小腿)
+  rots[21] = p.rShinRotX; rots[22] = 0; rots[23] = 0;
+  // bone 8: lThigh (左大腿)
+  rots[24] = p.lLegRotX; rots[25] = 0; rots[26] = 0;
+  // bone 9: lShin (左小腿)
+  rots[27] = p.lShinRotX; rots[28] = 0; rots[29] = 0;
+
+  // 根节点（整体位移+转体+前倾）
+  playerMaterial.uniforms.rootOffset.value.set(0, p.hipY, 0);
+  playerMaterial.uniforms.rootRotX.value = p.hipRotX;
+  playerMaterial.uniforms.rootRotY.value = p.hipRotY;
+  playerMaterial.uniforms.rootRotZ.value = p.hipRotZ;
+}
+
+function buildCourt(scene) {
+  // 缩放：真实 1m ≈ 0.33 场景单位
+  // 半场长 11.89m → 3.93, 单打宽 8.23m → 2.72, 双打宽 10.97m → 3.62
+  // 发球线距网 6.4m → 2.11, 中线长 6.4m → 2.11
+  const S = 0.33;
+  const halfLen = 11.89 * S;    // 3.93 — 底线到球网
+  const singleW = 8.23 * S / 2; // 1.36 — 单打半宽
+  const doubleW = 10.97 * S / 2; // 1.81 — 双打半宽
+  const serviceLen = 6.4 * S;   // 2.11 — 发球线距球网
+  const netH = 0.914 * S;       // 0.30 — 球网高度
+
+  // 人物脚下 ≈ (0.03, 0, 0.22)，面朝 +Z 方向发球
+  // 发球时人物站在底线后方，底线应在人物前方（Z更大的方向）
+  // 底线设在 Z=0.6（人物前方约 0.4），球网在 Z=0.6+3.93=4.53
+  const baselineZ = 0.6;
+  const netZ = baselineZ + halfLen;
+  const serviceZ = netZ - serviceLen;
+
+  // --- 场地地面（低调深色，不抢视觉） ---
+  const courtGeo = new THREE.PlaneGeometry(doubleW * 2 + 1, halfLen + 2);
+  const courtMat = new THREE.MeshLambertMaterial({ color: 0x0f2e3d });
+  const court = new THREE.Mesh(courtGeo, courtMat);
+  court.rotation.x = -Math.PI / 2;
+  court.position.set(0, -0.01, baselineZ + halfLen / 2);
+  scene.add(court);
+
+  // 场外区域 — 覆盖整个可见地面（包括人物脚下底线后方）
+  const outerGeo = new THREE.PlaneGeometry(doubleW * 2 + 4, halfLen + 8);
+  const outerMat = new THREE.MeshLambertMaterial({ color: 0x091a24 });
+  const outer = new THREE.Mesh(outerGeo, outerMat);
+  outer.rotation.x = -Math.PI / 2;
+  outer.position.set(0, -0.02, baselineZ + halfLen / 2 - 2);
+  scene.add(outer);
+
+  // --- 白色球场线 ---
+  const lineMat = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.3 });
+  const LINE_W = 0.02;
+
+  function addLine(x1, z1, x2, z2) {
+    const dx = x2 - x1, dz = z2 - z1;
+    const len = Math.sqrt(dx * dx + dz * dz);
+    const geo = new THREE.PlaneGeometry(LINE_W, len);
+    const mesh = new THREE.Mesh(geo, lineMat);
+    mesh.rotation.x = -Math.PI / 2;
+    mesh.rotation.z = -Math.atan2(dx, dz);
+    mesh.position.set((x1 + x2) / 2, 0.001, (z1 + z2) / 2);
+    scene.add(mesh);
+  }
+
+  // 底线
+  addLine(-doubleW, baselineZ, doubleW, baselineZ);
+  // 左双打边线
+  addLine(-doubleW, baselineZ, -doubleW, netZ);
+  // 右双打边线
+  addLine(doubleW, baselineZ, doubleW, netZ);
+  // 左单打边线
+  addLine(-singleW, baselineZ, -singleW, netZ);
+  // 右单打边线
+  addLine(singleW, baselineZ, singleW, netZ);
+  // 发球线
+  addLine(-singleW, serviceZ, singleW, serviceZ);
+  // 中线（发球线到球网之间）
+  addLine(0, serviceZ, 0, netZ);
+  // 底线中心标记
+  addLine(0, baselineZ - 0.1, 0, baselineZ);
+
+  // --- 球网 ---
+  // 网面（非常淡，仅作空间参照）
+  const netGeo = new THREE.PlaneGeometry(doubleW * 2 + 0.3, netH);
+  const netMat = new THREE.MeshBasicMaterial({
+    color: 0x888888, transparent: true, opacity: 0.15, side: THREE.DoubleSide
+  });
+  const netMesh = new THREE.Mesh(netGeo, netMat);
+  netMesh.position.set(0, netH / 2, netZ);
+  scene.add(netMesh);
+
+  // 网顶白线
+  const topLineGeo = new THREE.PlaneGeometry(doubleW * 2 + 0.3, 0.015);
+  const topLineMat = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.4 });
+  const topLineMesh = new THREE.Mesh(topLineGeo, topLineMat);
+  topLineMesh.position.set(0, netH, netZ);
+  scene.add(topLineMesh);
+
+  // 网柱（左右）
+  const postGeo = new THREE.CylinderGeometry(0.02, 0.02, netH + 0.08, 8);
+  const postMat = new THREE.MeshLambertMaterial({ color: 0x555555 });
+  const postL = new THREE.Mesh(postGeo, postMat);
+  postL.position.set(-doubleW - 0.15, (netH + 0.08) / 2, netZ);
+  scene.add(postL);
+  const postR = new THREE.Mesh(postGeo, postMat);
+  postR.position.set(doubleW + 0.15, (netH + 0.08) / 2, netZ);
+  scene.add(postR);
+}
+
+function initThreeScene() {
+  if (threeInited) return;
+  threeInited = true;
+
+  const canvas = document.getElementById('three-canvas');
+  renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+  renderer.setPixelRatio(window.devicePixelRatio);
+  renderer.setClearColor(0x0a1e2e);
+
+  scene = new THREE.Scene();
+  camera = new THREE.PerspectiveCamera(65, canvas.clientWidth / canvas.clientHeight, 0.01, 50);
+
+  function resize() {
+    const w = canvas.clientWidth, h = canvas.clientHeight;
+    renderer.setSize(w, h, false);
+    camera.aspect = w / h;
+    camera.updateProjectionMatrix();
+  }
+  resize();
+  window.addEventListener('resize', resize);
+
+  scene.add(new THREE.AmbientLight(0xffffff, 0.7));
+  const dl = new THREE.DirectionalLight(0xffffff, 0.9);
+  dl.position.set(2, 4, 2); scene.add(dl);
+
+  // 网球场
+  buildCourt(scene);
+
+  // 手腕轨迹曲线（参考图：从身后右下→向上→头顶右上方击球→向右前方下落）
+  // 人物中心在 (-0.55, 0, 0)，轨迹在人物右侧展开
+  const points = [
+    new THREE.Vector3(-0.25, 0.0, -0.2),    // 准备位（身后右下方）
+    new THREE.Vector3(-0.15, 0.54, -0.3),   // 拉拍上升
+    new THREE.Vector3(0.0, 1.14, -0.15),    // 背弓顶点（身后上方）
+    new THREE.Vector3(0.15, 1.49, 0.05),    // 加速向上
+    new THREE.Vector3(0.05, 1.64, 0.15),    // 击球点（头顶右上，最高点）
+    new THREE.Vector3(0.35, 1.14, 0.35),    // 随挥向右前
+    new THREE.Vector3(0.55, 0.44, 0.5),     // 收拍（右前方下落）
+  ];
+  wristCurve = new THREE.CatmullRomCurve3(points);
+  curvePoints = wristCurve.getPoints(100);
+  sceneCenter = new THREE.Vector3();
+  curvePoints.forEach(p => sceneCenter.add(p));
+  sceneCenter.divideScalar(curvePoints.length);
+
+  // 击球点（轨迹 60% 处）
+  const hitIdx = Math.floor(curvePoints.length * 0.6);
+  hitPoint = curvePoints[hitIdx].clone();
+
+  // 灰色透明壳（完整轨迹始终可见）— depthWrite:false 确保不遮挡彩色管
+  const shellGeo = new THREE.TubeGeometry(wristCurve, 80, 0.025, 12, false);
+  const shellMat = new THREE.MeshLambertMaterial({ color: 0x888888, transparent: true, opacity: 0.2, depthWrite: false });
+  const shellMesh = new THREE.Mesh(shellGeo, shellMat);
+  shellMesh.renderOrder = 0;
+  scene.add(shellMesh);
+
+  // 彩色填充管（通过自定义 ShaderMaterial + uProgress 控制显示进度）
+  const fillGeo = new THREE.TubeGeometry(wristCurve, 80, 0.022, 12, false);
+  // 给每个顶点记录它在曲线上的 t 值（0~1）
+  const segCount = 80;
+  const radialCount = 12;
+  const vertsPerRing = radialCount + 1;
+  const tValues = new Float32Array(fillGeo.attributes.position.count);
+  for (let seg = 0; seg <= segCount; seg++) {
+    const t = seg / segCount;
+    for (let v = 0; v < vertsPerRing; v++) {
+      tValues[seg * vertsPerRing + v] = t;
+    }
+  }
+  fillGeo.setAttribute('aT', new THREE.Float32BufferAttribute(tValues, 1));
+
+  const fillMat = new THREE.ShaderMaterial({
+    uniforms: {
+      uProgress: { value: 0.0 }
+    },
+    vertexShader: `
+      attribute float aT;
+      varying float vT;
+      void main() {
+        vT = aT;
+        gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+      }
+    `,
+    fragmentShader: `
+      uniform float uProgress;
+      varying float vT;
+      void main() {
+        if (vT > uProgress) discard;
+        // 速度渐变色：绿→黄→橙→红（击球点0.6处最红）
+        float speed = exp(-pow(vT - 0.6, 2.0) / 0.08);
+        vec3 color;
+        if (speed < 0.5) {
+          float s = speed / 0.5;
+          color = vec3(s, 0.75 + s * 0.15, 0.2 * (1.0 - s));
+        } else {
+          float s = (speed - 0.5) / 0.5;
+          color = vec3(1.0, 0.9 - s * 0.7, 0.0);
+        }
+        gl_FragColor = vec4(color, 0.95);
+      }
+    `,
+    transparent: true,
+    side: THREE.DoubleSide,
+    depthTest: true,
+    depthWrite: true
+  });
+  const fillMesh = new THREE.Mesh(fillGeo, fillMat);
+  fillMesh.renderOrder = 1;
+  scene.add(fillMesh);
+
+  window._fillMesh = fillMesh;
+
+  // 击球点红色环标记
+  hitMarker = new THREE.Mesh(
+    new THREE.RingGeometry(0.04, 0.07, 24),
+    new THREE.MeshBasicMaterial({ color: 0xff3333, side: THREE.DoubleSide, transparent: true, opacity: 0.8 })
+  );
+  hitMarker.position.copy(hitPoint);
+  scene.add(hitMarker);
+
+  // 网球
+  const ballGeo = new THREE.SphereGeometry(0.033, 16, 16);
+  const ballMat = new THREE.MeshPhongMaterial({ color: 0xccff00, shininess: 60 });
+  const tennisBall = new THREE.Mesh(ballGeo, ballMat);
+  tennisBall.visible = false;
+  scene.add(tennisBall);
+  window._tennisBall = tennisBall;
+
+  // OBJ 人物模型 + 关节动画
+  const loader = new OBJLoader();
+  loader.load('models/trophy-pose-low.obj', (obj) => {
+    buildPlayerSkeleton(obj, scene);
+    updatePlayerModel(0.32);
+  });
+
+  setCameraPreset('orbit');
+  updateOverlayChart();
+  requestAnimationFrame(animLoop);
+}
+
+
+function setCameraPreset(key) {
+  currentAngle = key;
+  // 显示填满的轨迹 + 全貌视角
+  const cam = cameraSchemes[key](1, sceneCenter, hitPoint);
+  camera.position.copy(cam.pos);
+  camera.lookAt(cam.look);
+  if (window._fillMesh) window._fillMesh.material.uniforms.uProgress.value = 1.0;
+  animProgress = 1; isPlaying = false;
+  updatePlayerModel(0.32); // 静态时保持击球姿势
+  document.getElementById('card-overlay').classList.add('show');
+  document.getElementById('card-chart-area').classList.add('show');
+  document.getElementById('play-overlay').classList.remove('hidden');
+}
+
+// 播放
+document.getElementById('play-overlay').addEventListener('click', () => {
+  // 每次点播放都从头开始
+  animProgress = 0;
+  if (window._fillMesh) window._fillMesh.material.uniforms.uProgress.value = 0.0;
+  isPlaying = true;
+  lastTime = performance.now();
+  document.getElementById('play-overlay').classList.add('hidden');
+  document.getElementById('card-overlay').classList.remove('show');
+  document.getElementById('card-chart-area').classList.remove('show');
+});
+
+function animLoop(time) {
+  requestAnimationFrame(animLoop);
+  if (!renderer) return;
+
+  if (isPlaying) {
+    const dt = time - lastTime;
+    let speed = 1;
+    if (currentAngle === 'bullet') {
+      const moveRatio = MOVE_DURATION / TOTAL_DURATION;
+      const normP = animProgress / moveRatio;
+      if (normP > 0.35 && normP < 0.6) speed = 0.3;
+      else speed = 1.2;
+    }
+    // 通用慢动作：根据实际轨迹填充进度判断，在接近峰值(t=0.6)时减速
+    const curCamT = Math.min(animProgress / (MOVE_DURATION / TOTAL_DURATION), 1);
+    const curFill = Math.pow(Math.min(curCamT / 0.65, 1.0), 0.6);
+    if (curFill >= 0.5 && curFill <= 0.7) {
+      speed *= 0.2;
+    }
+    animProgress += (dt / TOTAL_DURATION) * speed;
+    if (animProgress >= 1) {
+      animProgress = 1; isPlaying = false;
+      // 播放结束：强制轨迹完全填满（彩色），不是空壳
+      if (window._fillMesh) window._fillMesh.material.uniforms.uProgress.value = 1.0;
+      document.getElementById('play-overlay').classList.remove('hidden');
+      document.getElementById('card-overlay').classList.add('show');
+      document.getElementById('card-chart-area').classList.add('show');
+      hideViewLabel();
+    }
+  }
+
+  // 运镜 t
+  const moveRatio = MOVE_DURATION / TOTAL_DURATION;
+  const camT = Math.min(animProgress / moveRatio, 1);
+
+  // 彩色轨迹填充逻辑：播放中逐渐填满，非播放时强制满
+  if (window._fillMesh) {
+    if (isPlaying) {
+      // 播放中：轨迹比运镜快，在 camT 到 0.65 时就填满
+      const fillT = Math.min(camT / 0.65, 1.0);
+      window._fillMesh.material.uniforms.uProgress.value = Math.pow(fillT, 0.6);
+    } else {
+      // 非播放状态：始终显示完整彩色轨迹
+      window._fillMesh.material.uniforms.uProgress.value = 1.0;
+    }
+  }
+
+  // 击球点标记闪烁（仅在填充到击球点后显示）
+  if (hitMarker) {
+    const hitRatio = 0.6;
+    if (camT >= hitRatio) {
+      hitMarker.visible = true;
+      hitMarker.material.opacity = 0.4 + 0.4 * Math.sin(time * 0.008);
+      hitMarker.lookAt(camera.position);
+    } else {
+      hitMarker.visible = false;
+    }
+  }
+
+  // 运镜
+  const cam = cameraSchemes[currentAngle](camT, sceneCenter, hitPoint);
+  camera.position.copy(cam.pos);
+  camera.lookAt(cam.look);
+
+  // 多机位剪辑视角提示
+  if (currentAngle === 'autocut' && isPlaying) {
+    let viewLabel = '';
+    if (camT < 0.25) viewLabel = '正视';
+    else if (camT < 0.5) viewLabel = '侧视';
+    else viewLabel = '俯视';
+    showViewLabel(viewLabel);
+  } else if (currentAngle !== 'autocut') {
+    hideViewLabel();
+  }
+
+  // 人物模型动画
+  if (isPlaying) {
+    updatePlayerModel(camT);
+  }
+
+  // 网球动画
+  updateTennisBall(camT);
+
+  // 发球速度实时更新
+  updateSpeedDisplay(camT);
+
+  lastTime = time;
+  renderer.render(scene, camera);
+}
+
+// ============ 网球动画 ============
+// 击球时刻对应的 camT（fillProgress=0.6 时）
+// fillProgress = pow(camT/0.65, 0.6) = 0.6 → camT = 0.65 * pow(0.6, 1/0.6) ≈ 0.317
+const BALL_HIT_CAMT = 0.317;
+const BALL_FLY_END_CAMT = 0.55;
+const BALL_TOSS_START = new THREE.Vector3(0.05, 2.8, 0.1);
+const BALL_FLY_END = new THREE.Vector3(0.3, 0.6, 5.5);
+
+function updateTennisBall(camT) {
+  const ball = window._tennisBall;
+  if (!ball) return;
+
+  if (!isPlaying) {
+    ball.visible = false;
+    return;
+  }
+
+  if (camT <= 0) {
+    ball.visible = false;
+    return;
+  }
+
+  if (camT < BALL_HIT_CAMT) {
+    // 阶段A：下落（抛球高点 → 击球点）
+    ball.visible = true;
+    const t = camT / BALL_HIT_CAMT;
+    const eased = t * t; // 重力加速
+    ball.position.lerpVectors(BALL_TOSS_START, hitPoint, eased);
+    ball.scale.setScalar(1);
+  } else if (camT < BALL_FLY_END_CAMT) {
+    // 阶段C：飞出（击球点 → 远方）
+    ball.visible = true;
+    const t = (camT - BALL_HIT_CAMT) / (BALL_FLY_END_CAMT - BALL_HIT_CAMT);
+    const eased = 1 - Math.pow(1 - t, 3); // 缓出（初始极快）
+    ball.position.lerpVectors(hitPoint, BALL_FLY_END, eased);
+    // 飞远时球变小
+    ball.scale.setScalar(1 - eased * 0.6);
+  } else {
+    // 阶段D：消失
+    ball.visible = false;
+  }
+}
+
+// 速度曲线：模拟发球 准备→加速→击球峰值→减速
+// 击球点在 t=0.6，峰值速度 189 km/h
+const PEAK_SPEED = 189;
+const MIN_SPEED = 35;
+function getSpeedAtT(t) {
+  const peak = Math.exp(-Math.pow(t - 0.6, 2) / 0.03);
+  return MIN_SPEED + (PEAK_SPEED - MIN_SPEED) * peak;
+}
+
+// 与轨迹 shader 完全一致的颜色公式
+function getTrajectoryColor(t) {
+  const speedNorm = Math.exp(-Math.pow(t - 0.6, 2) / 0.08);
+  let r, g, b;
+  if (speedNorm < 0.5) {
+    const s = speedNorm / 0.5;
+    r = s; g = 0.75 + s * 0.15; b = 0.2 * (1 - s);
+  } else {
+    const s = (speedNorm - 0.5) / 0.5;
+    r = 1.0; g = 0.9 - s * 0.7; b = 0.0;
+  }
+  return `rgb(${Math.round(r*255)}, ${Math.round(g*255)}, ${Math.round(b*255)})`;
+}
+
+function updateSpeedDisplay(camT) {
+  const el = document.getElementById('speed-display');
+  const valEl = document.getElementById('speed-value');
+  if (!el || !valEl) return;
+
+  if (!isPlaying && animProgress >= 1) {
+    // 非播放状态显示峰值 + 峰值颜色
+    valEl.textContent = PEAK_SPEED;
+    valEl.style.color = getTrajectoryColor(0.6);
+    el.classList.add('peak');
+    el.style.opacity = '1';
+    return;
+  }
+
+  if (!isPlaying) {
+    el.style.opacity = '0';
+    return;
+  }
+
+  // 播放中：实际轨迹填充进度（和渲染同步）
+  const fillT = Math.min(camT / 0.65, 1.0);
+  const fillProgress = Math.pow(fillT, 0.6);
+  // 用填充进度对应的 t 值来计算速度和颜色
+  const tOnCurve = fillProgress;
+
+  el.style.opacity = '1';
+  const speed = Math.round(getSpeedAtT(tOnCurve));
+  valEl.textContent = speed;
+  valEl.style.color = getTrajectoryColor(tOnCurve);
+
+  // 接近峰值时触发高亮特效
+  if (speed >= PEAK_SPEED - 5) {
+    el.classList.add('peak');
+  } else {
+    el.classList.remove('peak');
+  }
+}
+
+function showViewLabel(text) {
+  let el = document.getElementById('autocut-view-label');
+  if (!el) {
+    el = document.createElement('div');
+    el.id = 'autocut-view-label';
+    el.style.cssText = 'position:absolute;top:10px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,0.6);color:#fff;font-size:12px;padding:3px 12px;border-radius:4px;pointer-events:none;transition:opacity 0.3s;z-index:10;';
+    document.querySelector('.video-preview').appendChild(el);
+  }
+  el.textContent = text;
+  el.style.opacity = '1';
+}
+
+function hideViewLabel() {
+  const el = document.getElementById('autocut-view-label');
+  if (el) el.style.opacity = '0';
+}
+
+// ============ 图表绘制 ============
+function drawChart(ctx, w, h, key) {
+  ctx.clearRect(0,0,w,h);
+  if (key === 'radar') drawRadar(ctx,w,h);
+  else if (key === 'speed_bar') drawBar(ctx,w,h);
+  else if (key === 'heartrate') drawHR(ctx,w,h);
+  else if (key === 'hands') drawPie(ctx,w,h,[{l:'正手',v:89,c:'#ff6b00'},{l:'反手',v:56,c:'#30b0c7'}]);
+  else if (key === 'stroke') drawPie(ctx,w,h,[{l:'上旋',v:67,c:'#34c759'},{l:'切削',v:34,c:'#ff9500'},{l:'其他',v:15,c:'#8e8e93'}]);
+}
+
+function drawRadar(ctx,w,h) {
+  const cx=w/2, cy=h/2, r=Math.min(cx,cy)-10;
+  const dims=['爆发','对抗','敏捷','稳定','耐力'], vals=[0.8,0.75,0.9,0.7,0.65], n=dims.length;
+  // 背景线
+  ctx.strokeStyle='#555'; ctx.lineWidth=0.5;
+  for (let ring=1;ring<=4;ring++) {
+    ctx.beginPath();
+    for (let i=0;i<=n;i++) { const a=(Math.PI*2*i)/n-Math.PI/2, rr=r*ring/4; i===0?ctx.moveTo(cx+rr*Math.cos(a),cy+rr*Math.sin(a)):ctx.lineTo(cx+rr*Math.cos(a),cy+rr*Math.sin(a)); }
+    ctx.stroke();
+  }
+  // 数据区（蓝色轮廓）
+  ctx.beginPath();
+  for (let i=0;i<=n;i++) { const a=(Math.PI*2*(i%n))/n-Math.PI/2, rr=r*0.85; i===0?ctx.moveTo(cx+rr*Math.cos(a),cy+rr*Math.sin(a)):ctx.lineTo(cx+rr*Math.cos(a),cy+rr*Math.sin(a)); }
+  ctx.strokeStyle='#4fc3f7'; ctx.lineWidth=1.5; ctx.stroke();
+  // 数据区（橙色填充）
+  ctx.beginPath();
+  for (let i=0;i<=n;i++) { const a=(Math.PI*2*(i%n))/n-Math.PI/2, rr=r*vals[i%n]; i===0?ctx.moveTo(cx+rr*Math.cos(a),cy+rr*Math.sin(a)):ctx.lineTo(cx+rr*Math.cos(a),cy+rr*Math.sin(a)); }
+  ctx.fillStyle='rgba(255,160,0,0.4)'; ctx.fill();
+  ctx.strokeStyle='#ff9500'; ctx.lineWidth=1.5; ctx.stroke();
+  // 标签
+  ctx.fillStyle='#aaa'; ctx.font=`${Math.max(8,w*0.07)}px sans-serif`; ctx.textAlign='center';
+  for (let i=0;i<n;i++) { const a=(Math.PI*2*i)/n-Math.PI/2; ctx.fillText(dims[i],cx+(r+8)*Math.cos(a),cy+(r+8)*Math.sin(a)+3); }
+}
+
+function drawBar(ctx,w,h) {
+  const speeds=[178,185,172,189,165,180,175,182,169,186], barW=(w-20)/speeds.length-2, maxV=200, baseY=h-8;
+  speeds.forEach((v,i) => {
+    const barH=(v/maxV)*(h-16), x=10+i*(barW+2);
+    const g=ctx.createLinearGradient(x,baseY-barH,x,baseY);
+    g.addColorStop(0,'#ff6b00'); g.addColorStop(1,'#ff9500');
+    ctx.fillStyle=g; ctx.fillRect(x,baseY-barH,barW,barH);
+  });
+}
+
+function drawHR(ctx,w,h) {
+  const pts=[]; for(let i=0;i<40;i++) pts.push(120+Math.sin(i*0.4)*20+(i>30?-15:0));
+  const maxV=160,minV=80,px=4,py=4;
+  ctx.beginPath();
+  pts.forEach((v,i)=>{ const x=px+(i/(pts.length-1))*(w-px*2), y=py+(1-(v-minV)/(maxV-minV))*(h-py*2); i===0?ctx.moveTo(x,y):ctx.lineTo(x,y); });
+  ctx.strokeStyle='#fff'; ctx.lineWidth=1.2; ctx.stroke();
+  ctx.lineTo(w-px,h-py); ctx.lineTo(px,h-py);
+  const g=ctx.createLinearGradient(0,0,0,h);
+  g.addColorStop(0,'rgba(255,255,255,0.15)'); g.addColorStop(1,'rgba(255,255,255,0)');
+  ctx.fillStyle=g; ctx.fill();
+}
+
+function drawPie(ctx,w,h,data) {
+  const cx=w/3,cy=h/2,r=Math.min(cx,cy)-4, total=data.reduce((s,d)=>s+d.v,0);
+  let startA=-Math.PI/2;
+  data.forEach(d=>{ const a=(d.v/total)*Math.PI*2; ctx.beginPath(); ctx.moveTo(cx,cy); ctx.arc(cx,cy,r,startA,startA+a); ctx.fillStyle=d.c; ctx.fill(); startA+=a; });
+  ctx.beginPath(); ctx.arc(cx,cy,r*0.45,0,Math.PI*2); ctx.fillStyle='#3a3a3c'; ctx.fill();
+  ctx.font='9px sans-serif';
+  data.forEach((d,i)=>{ const lx=w*0.58,ly=h*0.3+i*18; ctx.fillStyle=d.c; ctx.fillRect(lx,ly,8,8); ctx.fillStyle='#ccc'; ctx.textAlign='left'; ctx.fillText(`${d.l} ${Math.round(d.v/total*100)}%`,lx+12,ly+7); });
+}
+
+// 横向拖拽滚动
+document.querySelectorAll('.angle-scroll, .chart-scroll').forEach(el => {
+  let isDown = false, startX, scrollLeft;
+  el.addEventListener('mousedown', e => { isDown = true; startX = e.pageX - el.offsetLeft; scrollLeft = el.scrollLeft; });
+  el.addEventListener('mouseleave', () => { isDown = false; });
+  el.addEventListener('mouseup', () => { isDown = false; });
+  el.addEventListener('mousemove', e => { if (!isDown) return; e.preventDefault(); el.scrollLeft = scrollLeft - (e.pageX - el.offsetLeft - startX); });
+});
+
+</script>
+</body>
+</html>

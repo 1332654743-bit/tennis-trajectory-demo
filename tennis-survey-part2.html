@@ -1496,12 +1496,10 @@ function saveData() {
   localStorage.setItem('tennis-survey-results', JSON.stringify(stored));
   // 清理 Part1 临时数据
   localStorage.removeItem('tennis-survey-part1-answers');
-  // POST to Google Apps Script (free cloud backend)
-  const GOOGLE_SCRIPT_URL = 'PASTE_YOUR_GOOGLE_SCRIPT_URL_HERE';
-  const postTarget = GOOGLE_SCRIPT_URL.startsWith('http') ? GOOGLE_SCRIPT_URL : '/api/submit';
-  fetch(postTarget, {
+  // POST to server API
+  fetch('/api/submit', {
     method: 'POST',
-    headers: { 'Content-Type': 'text/plain' },
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(record)
   }).then(() => {
     const tip = document.getElementById('sync-tip');

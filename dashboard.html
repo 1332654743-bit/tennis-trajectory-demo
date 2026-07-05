@@ -44,6 +44,7 @@ td { color: #e0e0e0; }
   <div class="import-row">
     <button class="import-btn" onclick="document.getElementById('file-input').click()">上传 JSON 文件</button>
     <button class="import-btn secondary" onclick="pasteFromClipboard()">从剪贴板粘贴</button>
+    <button class="import-btn secondary" onclick="exportData()">导出 JSON</button>
     <button class="import-btn secondary" onclick="clearData()">清空数据</button>
     <input type="file" id="file-input" class="file-input" multiple accept=".json" onchange="handleFiles(this.files)">
   </div>
@@ -54,6 +55,11 @@ td { color: #e0e0e0; }
 <div class="progress-bar">
   <div class="progress-fill" id="progress-fill"></div>
   <span class="progress-text" id="progress-text">暂无数据</span>
+</div>
+
+<div class="section" id="quality-section" style="display:none">
+  <h2>数据质量</h2>
+  <div id="quality-info"></div>
 </div>
 
 <div class="section">
@@ -67,8 +73,13 @@ td { color: #e0e0e0; }
 </div>
 
 <div class="section">
-  <h2>功能使用率 Top 10</h2>
+  <h2>功能使用率（主动探索）</h2>
+  <p style="font-size:11px;color:#888;margin-bottom:10px;">已过滤流程必经步骤，分母为「有机会使用该功能的人数」而非总人数</p>
   <div id="table-features"><p class="empty">导入数据后自动显示</p></div>
+  <details style="margin-top:12px;font-size:12px;color:#aaa;">
+    <summary style="cursor:pointer;">查看流程必经步骤使用情况</summary>
+    <div id="table-mandatory" style="margin-top:8px;"></div>
+  </details>
 </div>
 
 <script>
@@ -95,6 +106,7 @@ const FEATURE_NAMES = {
   'video-music': '选择音乐',
   'video-add-photo': '添加照片',
   'photo-confirm': '确认照片',
+  'photo-back': '照片页返回',
   'report-tab': '报告标签切换',
   'report-data-tag': '数据项选择',
   'report-chart-tag': '图表选择',
@@ -102,6 +114,38 @@ const FEATURE_NAMES = {
   'style-watermark': '选择水印海报',
   'style-video': '选择轨迹视频',
   'style-report': '选择运动报告',
+  'template-back': '模板页返回',
+};
+const FEATURE_DESC = {
+  'template-select': '在海报编辑中，从多个模板布局中选择一个',
+  'bg-preset': '从系统提供的几张预设背景图中选择',
+  'bg-album': '从手机相册上传自定义背景图',
+  'bg-transparent': '将海报背景设为透明',
+  'bg-confirm': '确认当前选择的背景并进入下一步',
+  'bg-back': '在背景选择页点击返回，回到模板选择',
+  'poster-add-wm': '在海报上添加个人水印/logo',
+  'poster-del-wm': '删除已添加的水印',
+  'poster-edit-wm': '编辑水印的位置、大小等属性',
+  'poster-crop': '对背景图进行裁剪调整',
+  'poster-crop-confirm': '确认裁剪结果',
+  'poster-color': '调整海报配色方案',
+  'poster-fullscreen': '将海报全屏预览查看最终效果',
+  'poster-undo': '撤销上一步编辑操作',
+  'video-tab': '在轨迹视频编辑中切换不同设置面板（地图/音乐/照片）',
+  'video-map-style': '切换轨迹视频中的地图底图样式（经典/卫星/隐藏）',
+  'video-track-style': '修改轨迹线条的颜色或粗细样式',
+  'video-music': '为轨迹视频选择或更换背景音乐',
+  'video-add-photo': '向轨迹视频中插入照片素材',
+  'photo-confirm': '确认选择的照片并添加到视频',
+  'photo-back': '在照片选择页点击返回，不添加照片',
+  'report-tab': '在运动报告中切换不同内容面板（数据/图表/地图）',
+  'report-data-tag': '选择或取消报告中展示的数据项（配速、心率等）',
+  'report-chart-tag': '选择或取消报告中展示的图表类型',
+  'report-map-style': '切换运动报告中的地图底图样式',
+  'style-watermark': '在样式选择页选择"水印海报"作为分享样式',
+  'style-video': '在样式选择页选择"轨迹视频"作为分享样式',
+  'style-report': '在样式选择页选择"运动报告"作为分享样式',
+  'template-back': '在模板选择页点击返回，回到样式选择',
 };
 const STORE_KEY = 'dashboard_submissions';
 
@@ -138,24 +182,97 @@ function handleFiles(files) {
   });
 }
 
-// 从剪贴板粘贴
+// 从文本中提取所有调研数据 JSON 对象（支持飞书群消息混合粘贴）
+function extractJsonObjects(text) {
+  const results = [];
+  // 尝试1：整体是 JSON 数组
+  try {
+    const arr = JSON.parse(text);
+    if (Array.isArray(arr)) { arr.forEach(item => results.push(item)); return results; }
+    results.push(arr); return results;
+  } catch(e) {}
+
+  // 尝试2：按特征关键词定位数据 JSON 的起始位置
+  // demo 提交的数据一定包含 "userId" 紧跟 "usr_"，用这个特征精确定位
+  const marker = /"userId"\s*:\s*"usr_/g;
+  let match;
+  while ((match = marker.exec(text)) !== null) {
+    // 从匹配位置向前找最近的 {
+    let braceStart = match.index;
+    while (braceStart > 0 && text[braceStart] !== '{') braceStart--;
+    if (text[braceStart] !== '{') continue;
+
+    // 从 braceStart 向后匹配完整的 {} 对象
+    let depth = 0;
+    for (let i = braceStart; i < text.length; i++) {
+      if (text[i] === '{') depth++;
+      else if (text[i] === '}') {
+        depth--;
+        if (depth === 0) {
+          try { results.push(JSON.parse(text.substring(braceStart, i + 1))); } catch(e) {}
+          break;
+        }
+      }
+    }
+  }
+
+  // 尝试3：通用 fallback — 提取所有顶层 {} 且含 "summary" 的
+  if (results.length === 0) {
+    let depth = 0, start = -1;
+    for (let i = 0; i < text.length; i++) {
+      if (text[i] === '{') { if (depth === 0) start = i; depth++; }
+      else if (text[i] === '}') {
+        depth--;
+        if (depth === 0 && start >= 0) {
+          const chunk = text.substring(start, i + 1);
+          if (chunk.includes('"summary"')) {
+            try { results.push(JSON.parse(chunk)); } catch(e) {}
+          }
+          start = -1;
+        }
+      }
+    }
+  }
+  return results;
+}
+
+// 从剪贴板批量粘贴（自动识别多条 JSON）
 async function pasteFromClipboard() {
   try {
     const text = await navigator.clipboard.readText();
-    const raw = JSON.parse(text);
+    const objects = extractJsonObjects(text);
+    if (objects.length === 0) { showStatus('未识别到有效 JSON 数据'); return; }
+
     const subs = getSubmissions();
-    const sub = normalize(raw);
-    if (sub && !isDuplicate(subs, sub)) {
-      subs.push(sub);
+    let added = 0, skipped = 0;
+    objects.forEach(raw => {
+      const sub = normalize(raw);
+      if (sub && !isDuplicate(subs, sub)) { subs.push(sub); added++; }
+      else { skipped++; }
+    });
+
+    if (added > 0) {
       saveSubmissions(subs);
       render(subs);
-      showStatus('粘贴成功！');
-    } else {
-      showStatus('数据已存在或格式无效');
     }
+    const skipDetail = skipped > 0 ? `，跳过 ${skipped} 条（重复或格式不匹配）` : '';
+    showStatus(`从剪贴板识别 ${objects.length} 条JSON，新增 ${added} 条${skipDetail}`);
   } catch(e) {
     showStatus('粘贴失败：请先复制 JSON 文本，或检查浏览器权限');
   }
+}
+
+function exportData() {
+  const subs = getSubmissions();
+  if (subs.length === 0) { showStatus('暂无数据可导出'); return; }
+  const blob = new Blob([JSON.stringify(subs, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `survey-data-${subs.length}份-${new Date().toISOString().slice(0,10)}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+  showStatus(`已导出 ${subs.length} 份数据`);
 }
 
 function clearData() {
@@ -167,13 +284,16 @@ function clearData() {
 }
 
 // 标准化数据格式
+let _normalizeCounter = 0;
 function normalize(raw) {
-  // 格式1: {userId, data: {events, summary}, submittedAt}
+  // 格式1: {userId, data: {events, summary}, submittedAt} — 已包装好的
   if (raw.userId && raw.data && raw.data.summary) return raw;
-  // 格式2: {events, summary} (直接从 demo 导出的)
-  if (raw.events && raw.summary) return { userId: 'file_' + Date.now(), data: raw, submittedAt: '' };
-  // 格式3: 飞书消息中复制的完整 JSON
-  if (raw.summary && !raw.events) return { userId: raw.userId || 'paste_' + Date.now(), data: raw, submittedAt: raw.submittedAt || '' };
+  // 格式2: {userId, events, summary} — demo 实际提交到飞书的格式
+  if (raw.userId && raw.events && raw.summary) return { userId: raw.userId, data: { events: raw.events, summary: raw.summary }, submittedAt: raw.submittedAt || '' };
+  // 格式3: {events, summary} 无 userId（手动导出的）
+  if (raw.events && raw.summary) return { userId: 'file_' + Date.now() + '_' + (++_normalizeCounter), data: raw, submittedAt: '' };
+  // 格式4: {summary} 无 events
+  if (raw.summary && !raw.events) return { userId: raw.userId || 'paste_' + Date.now() + '_' + (++_normalizeCounter), data: raw, submittedAt: raw.submittedAt || '' };
   return null;
 }
 
@@ -186,6 +306,52 @@ function showStatus(msg) {
   setTimeout(() => { document.getElementById('import-status').textContent = ''; }, 3000);
 }
 
+// ========== 数据质量过滤 ==========
+const SCENARIOS = ['daily', 'pb', 'marathon'];
+const STYLE_ORDER_SEQ = ['watermark', 'video', 'report'];
+const MANDATORY_SET = new Set(['style-watermark', 'style-video', 'style-report', 'template-select', 'bg-confirm']);
+
+function getTotalDuration(sub) {
+  const summary = sub.data?.summary || {};
+  let total = 0;
+  Object.values(summary).forEach(info => { total += (info.totalDuration || 0); });
+  return total;
+}
+
+function isCarelessUser(sub) {
+  const summary = sub.data?.summary || {};
+  const events = sub.data?.events || [];
+  // 条件1：样式选择完全按按钮顺序（海报→视频→报告）
+  const scenarioFirstTs = {};
+  events.forEach(e => {
+    const s = e.scenario;
+    if (s && SCENARIOS.includes(s) && !scenarioFirstTs[s]) scenarioFirstTs[s] = e.timestamp || 0;
+  });
+  if (Object.keys(scenarioFirstTs).length < 3) return false;
+  const ordered = Object.keys(scenarioFirstTs).sort((a, b) => scenarioFirstTs[a] - scenarioFirstTs[b]);
+  const choices = ordered.map(s => summary[s]?.styleChoice || '');
+  if (JSON.stringify(choices) !== JSON.stringify(STYLE_ORDER_SEQ)) return false;
+  // 条件2：总时长 < 120秒
+  if (getTotalDuration(sub) >= 120000) return false;
+  // 条件3：非默认操作 ≤ 2个
+  const allFeatures = new Set();
+  SCENARIOS.forEach(s => { (summary[s]?.featuresUsed || []).forEach(f => allFeatures.add(f)); });
+  const nonDefault = [...allFeatures].filter(f => !MANDATORY_SET.has(f));
+  return nonDefault.length <= 2;
+}
+
+function filterValidSubmissions(submissions) {
+  const valid = [], careless = [];
+  submissions.forEach(sub => {
+    if (isCarelessUser(sub)) {
+      careless.push(sub);
+    } else {
+      valid.push(sub);
+    }
+  });
+  return { valid, careless };
+}
+
 // ========== 渲染 ==========
 function render(submissions) {
   const total = submissions.length;
@@ -196,9 +362,35 @@ function render(submissions) {
   document.getElementById('progress-text').textContent = total > 0 ? `已收集 ${total} / ${TARGET} 份 (${pct}%)` : '暂无数据';
 
   if (total === 0) {
+    document.getElementById('quality-section').style.display = 'none';
     document.getElementById('table-style').innerHTML = '<p class="empty">导入数据后自动显示</p>';
     document.getElementById('table-duration').innerHTML = '<p class="empty">导入数据后自动显示</p>';
     document.getElementById('table-features').innerHTML = '<p class="empty">导入数据后自动显示</p>';
+    return;
+  }
+
+  // 数据质量过滤
+  const { valid, careless } = filterValidSubmissions(submissions);
+  const qualityEl = document.getElementById('quality-section');
+  qualityEl.style.display = 'block';
+  let qualityHTML = `<p style="font-size:13px;">总收集 <b>${total}</b> 份，有效 <span style="color:#4caf50;font-weight:700">${valid.length}</span> 份，剔除 <span style="color:#ff5252;font-weight:700">${careless.length}</span> 份</p>`;
+  qualityHTML += `<p style="font-size:11px;color:#888;margin-top:4px;">过滤规则：同时满足 按顺序点选样式(海报→视频→报告) + 总时长<120秒 + 非默认操作≤2个 → 判定为敷衍作答</p>`;
+  if (careless.length > 0) {
+    qualityHTML += `<details style="margin-top:8px;font-size:12px;color:#aaa;"><summary style="cursor:pointer;">查看剔除数据 (${careless.length})</summary><ul style="margin-top:6px;padding-left:16px;">`;
+    careless.forEach(sub => {
+      const dur = Math.round(getTotalDuration(sub) / 1000);
+      qualityHTML += `<li>${sub.userId || '匿名'} — ${dur}秒，按顺序选择+低操作</li>`;
+    });
+    qualityHTML += '</ul></details>';
+  }
+  document.getElementById('quality-info').innerHTML = qualityHTML;
+
+  // 以下分析仅使用有效数据
+  submissions = valid;
+  if (submissions.length === 0) {
+    document.getElementById('table-style').innerHTML = '<p class="empty">暂无有效数据</p>';
+    document.getElementById('table-duration').innerHTML = '<p class="empty">暂无有效数据</p>';
+    document.getElementById('table-features').innerHTML = '<p class="empty">暂无有效数据</p>';
     return;
   }
 
@@ -213,7 +405,11 @@ function render(submissions) {
     });
   });
 
-  let styleHTML = '<table><tr><th></th><th>水印海报</th><th>轨迹视频</th><th>运动报告</th></tr>';
+  // 基于10人深度访谈加权分享行为占比（排除D社交玩法7%后归一化）
+  // A存在打卡61%→日常, B数据炫耀17%→PB, C体验叙事15%→马拉松
+  const SCENARIO_WEIGHTS = { daily: 0.656, pb: 0.183, marathon: 0.161 };
+
+  let styleHTML = '<table><tr><th></th><th>水印海报</th><th>轨迹视频</th><th>运动报告</th><th style="font-size:10px;color:#666">权重</th></tr>';
   ['daily', 'pb', 'marathon'].forEach(s => {
     const row = styleMatrix[s];
     const t = Object.values(row).reduce((a, b) => a + b, 0) || 1;
@@ -222,9 +418,28 @@ function render(submissions) {
       <td>${pctStr(row.watermark, t)}</td>
       <td>${pctStr(row.video, t)}</td>
       <td>${pctStr(row.report, t)}</td>
+      <td style="font-size:10px;color:#666">${(SCENARIO_WEIGHTS[s]*100).toFixed(1)}%</td>
     </tr>`;
   });
+  // 加权汇总行
+  const weighted = { watermark: 0, video: 0, report: 0 };
+  ['daily', 'pb', 'marathon'].forEach(s => {
+    const row = styleMatrix[s];
+    const t = Object.values(row).reduce((a, b) => a + b, 0) || 1;
+    ['watermark', 'video', 'report'].forEach(style => {
+      weighted[style] += SCENARIO_WEIGHTS[s] * ((row[style] || 0) / t);
+    });
+  });
+  const wTotal = weighted.watermark + weighted.video + weighted.report || 1;
+  styleHTML += `<tr style="border-top:2px solid #ff9500;">
+    <td><b style="color:#ff9500">加权汇总</b></td>
+    <td><span class="highlight">${(weighted.watermark/wTotal*100).toFixed(1)}%</span></td>
+    <td><span class="highlight">${(weighted.video/wTotal*100).toFixed(1)}%</span></td>
+    <td><span class="highlight">${(weighted.report/wTotal*100).toFixed(1)}%</span></td>
+    <td style="font-size:10px;color:#666">100%</td>
+  </tr>`;
   styleHTML += '</table>';
+  styleHTML += '<p style="font-size:10px;color:#666;margin-top:6px;">权重依据：10人深度访谈加权分享行为占比（A存在打卡65.6%→日常 / B数据炫耀18.3%→PB / C体验叙事16.1%→马拉松，已排除D社交玩法7%）</p>';
   document.getElementById('table-style').innerHTML = styleHTML;
 
   // Duration
@@ -253,33 +468,82 @@ function render(submissions) {
   durHTML += '</table>';
   document.getElementById('table-duration').innerHTML = durHTML;
 
-  // Feature usage
-  const featureCount = {};
+  // Feature usage — 区分流程必经 vs 主动探索
+  // 流程必经：选了某样式后必然触发的操作
+  const MANDATORY_FEATURES = new Set([
+    'style-watermark', 'style-video', 'style-report',  // 选择样式本身
+    'template-select', 'bg-confirm',  // 选海报必然选模板、确认背景
+  ]);
+  // 功能归属：哪些功能只有选了特定样式的人才有机会用
+  const STYLE_SCOPE = {
+    'watermark': ['bg-preset', 'bg-album', 'bg-transparent', 'bg-back', 'template-back', 'poster-add-wm', 'poster-del-wm', 'poster-edit-wm', 'poster-crop', 'poster-crop-confirm', 'poster-color', 'poster-fullscreen', 'poster-undo'],
+    'video': ['video-tab', 'video-map-style', 'video-track-style', 'video-music', 'video-add-photo', 'photo-confirm', 'photo-back'],
+    'report': ['report-tab', 'report-data-tag', 'report-chart-tag', 'report-map-style'],
+  };
+  const FEATURE_TO_STYLE = {};
+  Object.entries(STYLE_SCOPE).forEach(([style, feats]) => {
+    feats.forEach(f => { FEATURE_TO_STYLE[f] = style; });
+  });
+
+  // 统计每个样式被选的人次（一个人在不同场景可选不同样式）
+  const styleUserCount = { watermark: 0, video: 0, report: 0 };
+  submissions.forEach(sub => {
+    const summary = sub.data?.summary || {};
+    const usedStyles = new Set();
+    Object.values(summary).forEach(info => {
+      const sc = info.styleChoice;
+      if (sc) usedStyles.add(sc);
+    });
+    usedStyles.forEach(s => { if (styleUserCount[s] !== undefined) styleUserCount[s]++; });
+  });
+
+  const mandatoryCount = {};
+  const exploratoryCount = {};
   submissions.forEach(sub => {
     const summary = sub.data?.summary || {};
     Object.values(summary).forEach(info => {
       (info.featuresUsed || []).forEach(f => {
-        featureCount[f] = (featureCount[f] || 0) + 1;
+        if (MANDATORY_FEATURES.has(f)) {
+          mandatoryCount[f] = (mandatoryCount[f] || 0) + 1;
+        } else {
+          exploratoryCount[f] = (exploratoryCount[f] || 0) + 1;
+        }
       });
     });
   });
 
-  const sorted = Object.entries(featureCount).sort((a, b) => b[1] - a[1]).slice(0, 10);
-  const maxCount = sorted[0] ? sorted[0][1] : 1;
-
-  let featHTML = '<table>';
-  sorted.forEach(([feat, count]) => {
-    const barW = Math.round(count / maxCount * 120);
-    const rate = (count / total * 100).toFixed(0);
+  // 主动探索功能表
+  const expSorted = Object.entries(exploratoryCount).sort((a, b) => b[1] - a[1]);
+  const expMax = expSorted[0] ? expSorted[0][1] : 1;
+  let featHTML = '<table><tr><th style="text-align:left">功能</th><th>使用率</th><th>人数</th><th style="font-size:10px;color:#666">分母</th></tr>';
+  expSorted.forEach(([feat, count]) => {
+    const scope = FEATURE_TO_STYLE[feat];
+    const base = scope ? styleUserCount[scope] : submissions.length;
+    const rate = base > 0 ? (count / base * 100).toFixed(0) : '0';
+    const barW = Math.round(count / expMax * 120);
     const name = FEATURE_NAMES[feat] || feat;
-    featHTML += `<tr>
-      <td style="text-align:left;width:35%">${name}</td>
+    const desc = FEATURE_DESC[feat] || '';
+    const baseLabel = scope ? `选${scope === 'watermark' ? '海报' : scope === 'video' ? '视频' : '报告'}${base}人` : `全部${base}人`;
+    featHTML += `<tr title="${desc}">
+      <td style="text-align:left;width:30%">${name}<br><span style="font-size:10px;color:#666;">${desc}</span></td>
       <td class="bar-cell"><span class="bar" style="width:${barW}px"></span>${rate}%</td>
-      <td style="width:15%">${count}人</td>
+      <td style="width:12%">${count}人</td>
+      <td style="width:18%;font-size:10px;color:#666">${baseLabel}</td>
     </tr>`;
   });
   featHTML += '</table>';
   document.getElementById('table-features').innerHTML = featHTML;
+
+  // 流程必经步骤表
+  const manSorted = Object.entries(mandatoryCount).sort((a, b) => b[1] - a[1]);
+  let manHTML = '<table>';
+  manSorted.forEach(([feat, count]) => {
+    const name = FEATURE_NAMES[feat] || feat;
+    const desc = FEATURE_DESC[feat] || '';
+    manHTML += `<tr><td style="text-align:left">${name}<br><span style="font-size:10px;color:#555;">${desc}</span></td><td>${count}人次</td></tr>`;
+  });
+  manHTML += '</table>';
+  document.getElementById('table-mandatory').innerHTML = manHTML;
 }
 
 function pctStr(count, total) {
