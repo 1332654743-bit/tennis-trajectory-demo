@@ -452,21 +452,39 @@ const ribbonMat = new THREE.ShaderMaterial({
         float s = (speed - 0.5) / 0.5;
         color = vec3(1.0, 0.9 - s * 0.7, 0.0);
       }
-      // Subtle shading based on normal for silk-like look
       float light = 0.5 + 0.5 * abs(dot(vNormal, vec3(0.3, 0.8, 0.5)));
-      gl_FragColor = vec4(color * light, 0.85);
+      // 离人越近(t小)透明度越高，渐变到正常不透明
+      float alpha = smoothstep(0.0, 0.35, vT) * 0.85;
+      gl_FragColor = vec4(color * light, alpha);
     }
   `,
-  transparent: true, side: THREE.DoubleSide, depthTest: true, depthWrite: true
+  transparent: true, side: THREE.DoubleSide, depthTest: true, depthWrite: false
 });
 const ribbonMesh = new THREE.Mesh(ribbonGeo, ribbonMat);
 ribbonMesh.renderOrder = 1;
 ribbonMesh.visible = false;
 scene.add(ribbonMesh);
 
-// Ribbon shell (same shape, dim gray, always fully visible)
+// Ribbon shell (same shape, dim gray, fade near start)
 const ribbonShellGeo = buildRibbonGeometry(wristCurve, 120, 0.065);
-const ribbonShellMat = new THREE.MeshLambertMaterial({ color: 0x888888, transparent: true, opacity: 0.2, side: THREE.DoubleSide, depthWrite: false });
+const ribbonShellMat = new THREE.ShaderMaterial({
+  vertexShader: `
+    attribute float aT;
+    varying float vT;
+    void main() {
+      vT = aT;
+      gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+    }
+  `,
+  fragmentShader: `
+    varying float vT;
+    void main() {
+      float alpha = smoothstep(0.0, 0.35, vT) * 0.2;
+      gl_FragColor = vec4(0.53, 0.53, 0.53, alpha);
+    }
+  `,
+  transparent: true, side: THREE.DoubleSide, depthWrite: false
+});
 const ribbonShellMesh = new THREE.Mesh(ribbonShellGeo, ribbonShellMat);
 ribbonShellMesh.renderOrder = 0;
 ribbonShellMesh.visible = false;
