@@ -404,5 +404,70 @@
     },
     "timestamp": "2026-07-06T02:43:49.092Z",
     "id": "user_1783305829092"
+  },
+  {
+    "part": "combined",
+    "answers": {
+      "court": {
+        "choice": "hide",
+        "btnValue": "hide",
+        "comment": ""
+      },
+      "style": {
+        "choice": "current",
+        "btnValue": "current",
+        "comment": ""
+      },
+      "ballfly": {
+        "choice": "no",
+        "btnValue": "no",
+        "comment": ""
+      },
+      "marker": {
+        "btnValue": "ball",
+        "choice": "ball",
+        "comment": ""
+      },
+      "speed": {
+        "btnValue": "0.5",
+        "choice": "0.5",
+        "comment": ""
+      },
+      "model": {
+        "choice": "whatever",
+        "followup": [],
+        "comment": "人物模型没有随动，有无都不影响"
+      },
+      "camera": {
+        "btnValue": "pushin",
+        "choice": "pushin",
+        "comment": ""
+      },
+      "data": {
+        "choices": [
+          "max_serve",
+          "max_rally",
+          "avg_hr"
+        ],
+        "comment": "",
+        "choice": [
+          "max_serve",
+          "max_rally",
+          "avg_hr"
+        ]
+      },
+      "chart": {
+        "btnValue": "radar",
+        "choice": "radar",
+        "comment": ""
+      },
+      "share": {
+        "choice": "never",
+        "followup": [],
+        "comment": "这个啥也看不出来，除了最大速度完全没有任何吸引人的地方"
+      }
+    },
+    "timestamp": "2026-07-06T02:45:55.422Z",
+    "id": "user_1783305955422"
   }
 ]
