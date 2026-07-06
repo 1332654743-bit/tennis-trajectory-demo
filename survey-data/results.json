@@ -4764,5 +4764,74 @@
     },
     "timestamp": "2026-07-06T08:32:33.297Z",
     "id": "user_1783326753301"
+  },
+  {
+    "part": "combined",
+    "answers": {
+      "court": {
+        "btnValue": "show",
+        "choice": "show",
+        "comment": "不能做到是实际位置吗"
+      },
+      "style": {
+        "choice": "tube",
+        "btnValue": "tube",
+        "comment": ""
+      },
+      "ballfly": {
+        "btnValue": "yes",
+        "choice": "yes",
+        "comment": ""
+      },
+      "marker": {
+        "btnValue": "cross",
+        "choice": "cross",
+        "comment": ""
+      },
+      "speed": {
+        "btnValue": "0.5",
+        "choice": "0.5",
+        "comment": ""
+      },
+      "model": {
+        "choice": "fine",
+        "followup": [],
+        "comment": ""
+      },
+      "camera": {
+        "choice": "bullet",
+        "btnValue": "bullet",
+        "comment": ""
+      },
+      "data": {
+        "choices": [
+          "max_serve",
+          "max_hit",
+          "avg_speed"
+        ],
+        "comment": "",
+        "choice": [
+          "max_serve",
+          "max_hit",
+          "avg_speed"
+        ]
+      },
+      "chart": {
+        "choice": "radar",
+        "btnValue": "radar",
+        "comment": ""
+      },
+      "share": {
+        "choice": "maybe",
+        "followup": [
+          "social",
+          "community",
+          "save"
+        ],
+        "comment": ""
+      }
+    },
+    "timestamp": "2026-07-06T11:13:37.537Z",
+    "id": "user_1783336417537"
   }
 ]
