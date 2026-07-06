@@ -469,5 +469,70 @@
     },
     "timestamp": "2026-07-06T02:45:55.422Z",
     "id": "user_1783305955422"
+  },
+  {
+    "part": "combined",
+    "answers": {
+      "court": {
+        "btnValue": "show",
+        "choice": "show",
+        "comment": ""
+      },
+      "style": {
+        "btnValue": "tube",
+        "choice": "tube",
+        "comment": ""
+      },
+      "ballfly": {
+        "comment": "",
+        "btnValue": "yes",
+        "choice": "yes"
+      },
+      "marker": {
+        "btnValue": "ring",
+        "choice": "ring",
+        "comment": ""
+      },
+      "speed": {
+        "choice": "1.5",
+        "btnValue": "1.5",
+        "comment": ""
+      },
+      "model": {
+        "choice": "fine",
+        "followup": [],
+        "comment": ""
+      },
+      "camera": {
+        "btnValue": "orbit",
+        "choice": "orbit",
+        "comment": ""
+      },
+      "data": {
+        "choices": [
+          "max_speed",
+          "max_serve",
+          "avg_hr"
+        ],
+        "comment": "",
+        "choice": [
+          "max_speed",
+          "max_serve",
+          "avg_hr"
+        ]
+      },
+      "chart": {
+        "btnValue": "heartrate",
+        "choice": "heartrate",
+        "comment": ""
+      },
+      "share": {
+        "choice": "never",
+        "followup": [],
+        "comment": ""
+      }
+    },
+    "timestamp": "2026-07-06T02:47:19.232Z",
+    "id": "user_1783306039232"
   }
 ]
