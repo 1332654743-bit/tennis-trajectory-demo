@@ -3528,5 +3528,71 @@
     },
     "timestamp": "2026-07-06T04:01:40.824Z",
     "id": "user_1783310500824"
+  },
+  {
+    "part": "combined",
+    "answers": {
+      "court": {
+        "choice": "whatever",
+        "comment": ""
+      },
+      "style": {
+        "choice": "current",
+        "btnValue": "current",
+        "comment": ""
+      },
+      "ballfly": {
+        "choice": "whatever",
+        "comment": ""
+      },
+      "marker": {
+        "choice": "ring",
+        "btnValue": "ring",
+        "comment": ""
+      },
+      "speed": {
+        "choice": "0.5",
+        "btnValue": "0.5",
+        "comment": ""
+      },
+      "model": {
+        "choice": "fine",
+        "followup": [],
+        "comment": ""
+      },
+      "camera": {
+        "btnValue": "pushin",
+        "choice": "pushin",
+        "comment": ""
+      },
+      "data": {
+        "choices": [
+          "max_serve",
+          "max_hit",
+          "max_rally"
+        ],
+        "comment": "",
+        "choice": [
+          "max_serve",
+          "max_hit",
+          "max_rally"
+        ]
+      },
+      "chart": {
+        "choice": "radar",
+        "btnValue": "radar",
+        "comment": ""
+      },
+      "share": {
+        "choice": "maybe",
+        "followup": [
+          "moments",
+          "wechat"
+        ],
+        "comment": ""
+      }
+    },
+    "timestamp": "2026-07-06T04:15:11.861Z",
+    "id": "user_1783311311862"
   }
 ]
