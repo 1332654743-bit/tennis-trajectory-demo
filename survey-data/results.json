@@ -1710,5 +1710,75 @@
     },
     "timestamp": "2026-07-06T03:01:39.926Z",
     "id": "user_1783306899926"
+  },
+  {
+    "part": "combined",
+    "answers": {
+      "court": {
+        "btnValue": "show",
+        "choice": "show",
+        "comment": ""
+      },
+      "style": {
+        "btnValue": "tube",
+        "choice": "tube",
+        "comment": "另外，在高亮段的显示速率上，应该也要跟实际用户挥拍的速度保持一致，现在只有左上角有速率显示，但不够直观，且和你动画里的速率是矛盾的"
+      },
+      "ballfly": {
+        "btnValue": "yes",
+        "choice": "yes",
+        "comment": ""
+      },
+      "marker": {
+        "btnValue": "ring",
+        "choice": "ring",
+        "comment": "最好是动画里的人也能动起来，要不不知道动作怎么做，大家都知道要在最高点击球，难的是不知道怎么调动身体来做到"
+      },
+      "speed": {
+        "choice": "1",
+        "btnValue": "1",
+        "comment": ""
+      },
+      "model": {
+        "choice": "uncomfortable",
+        "followup": [
+          "clothes"
+        ],
+        "comment": ""
+      },
+      "camera": {
+        "btnValue": "shoulder",
+        "choice": "shoulder",
+        "comment": "模拟人物的建模太简陋，有点不适"
+      },
+      "data": {
+        "choices": [
+          "max_hit",
+          "max_serve",
+          "avg_hr"
+        ],
+        "comment": "最长连拍的单位错了",
+        "choice": [
+          "max_hit",
+          "max_serve",
+          "avg_hr"
+        ]
+      },
+      "chart": {
+        "btnValue": "radar",
+        "choice": "radar",
+        "comment": ""
+      },
+      "share": {
+        "choice": "maybe",
+        "followup": [
+          "wechat",
+          "community"
+        ],
+        "comment": ""
+      }
+    },
+    "timestamp": "2026-07-06T03:01:54.473Z",
+    "id": "user_1783306914473"
   }
 ]
