@@ -3868,5 +3868,72 @@
     },
     "timestamp": "2026-07-06T05:54:18.133Z",
     "id": "user_1783317258134"
+  },
+  {
+    "part": "combined",
+    "answers": {
+      "court": {
+        "btnValue": "show",
+        "choice": "show",
+        "comment": ""
+      },
+      "style": {
+        "btnValue": "current",
+        "choice": "current",
+        "comment": "希望一种颜色就可以，没太看懂不同颜色有什么不同含义"
+      },
+      "ballfly": {
+        "btnValue": "yes",
+        "choice": "yes",
+        "comment": ""
+      },
+      "marker": {
+        "btnValue": "cross",
+        "choice": "cross",
+        "comment": ""
+      },
+      "speed": {
+        "btnValue": "1",
+        "choice": "1",
+        "comment": ""
+      },
+      "model": {
+        "choice": "fine",
+        "followup": [],
+        "comment": ""
+      },
+      "camera": {
+        "btnValue": "orbit",
+        "choice": "orbit",
+        "comment": ""
+      },
+      "data": {
+        "choices": [
+          "max_serve",
+          "avg_hr",
+          "max_hit"
+        ],
+        "comment": "",
+        "choice": [
+          "max_serve",
+          "avg_hr",
+          "max_hit"
+        ]
+      },
+      "chart": {
+        "btnValue": "radar",
+        "choice": "radar",
+        "comment": ""
+      },
+      "share": {
+        "choice": "very",
+        "followup": [
+          "wechat"
+        ],
+        "comment": ""
+      }
+    },
+    "timestamp": "2026-07-06T05:56:08.354Z",
+    "id": "user_1783317368354"
   }
 ]
