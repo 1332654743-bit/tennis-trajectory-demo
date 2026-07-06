@@ -2198,5 +2198,73 @@
     },
     "timestamp": "2026-07-06T03:05:21.258Z",
     "id": "user_1783307121259"
+  },
+  {
+    "part": "combined",
+    "answers": {
+      "court": {
+        "btnValue": "show",
+        "choice": "show",
+        "comment": ""
+      },
+      "style": {
+        "btnValue": "ribbon",
+        "choice": "ribbon",
+        "comment": ""
+      },
+      "ballfly": {
+        "btnValue": "yes",
+        "choice": "yes",
+        "comment": ""
+      },
+      "marker": {
+        "btnValue": "ring",
+        "choice": "ring",
+        "comment": ""
+      },
+      "speed": {
+        "choice": "1",
+        "btnValue": "1",
+        "comment": ""
+      },
+      "model": {
+        "choice": "fine",
+        "followup": [],
+        "comment": "人物朝向不对，应该左肩膀朝球场方向，"
+      },
+      "camera": {
+        "btnValue": "bullet",
+        "choice": "bullet",
+        "comment": ""
+      },
+      "data": {
+        "choices": [
+          "max_serve",
+          "max_hit",
+          "max_speed"
+        ],
+        "comment": "",
+        "choice": [
+          "max_serve",
+          "max_hit",
+          "max_speed"
+        ]
+      },
+      "chart": {
+        "choice": "hands",
+        "btnValue": "hands",
+        "comment": ""
+      },
+      "share": {
+        "choice": "maybe",
+        "followup": [
+          "social",
+          "community"
+        ],
+        "comment": ""
+      }
+    },
+    "timestamp": "2026-07-06T03:06:54.784Z",
+    "id": "user_1783307214784"
   }
 ]
