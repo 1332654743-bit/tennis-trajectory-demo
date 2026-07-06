@@ -3318,5 +3318,73 @@
     },
     "timestamp": "2026-07-06T03:34:59.804Z",
     "id": "user_1783308899804"
+  },
+  {
+    "part": "combined",
+    "answers": {
+      "court": {
+        "btnValue": "show",
+        "choice": "show",
+        "comment": ""
+      },
+      "style": {
+        "btnValue": "tube",
+        "choice": "tube",
+        "comment": ""
+      },
+      "ballfly": {
+        "btnValue": "yes",
+        "choice": "yes",
+        "comment": ""
+      },
+      "marker": {
+        "btnValue": "ring",
+        "choice": "ring",
+        "comment": ""
+      },
+      "speed": {
+        "btnValue": "2",
+        "choice": "2",
+        "comment": ""
+      },
+      "model": {
+        "comment": "可以彩色一些，现在颜色好单调",
+        "choice": "fine",
+        "followup": []
+      },
+      "camera": {
+        "btnValue": "shoulder",
+        "choice": "shoulder",
+        "comment": ""
+      },
+      "data": {
+        "choices": [
+          "max_serve",
+          "max_hit",
+          "avg_hr"
+        ],
+        "comment": "没打过网球，不太懂自己会更愿意看哪个",
+        "choice": [
+          "max_serve",
+          "max_hit",
+          "avg_hr"
+        ]
+      },
+      "chart": {
+        "btnValue": "stroke",
+        "choice": "stroke",
+        "comment": ""
+      },
+      "share": {
+        "choice": "maybe",
+        "followup": [
+          "social",
+          "community"
+        ],
+        "comment": ""
+      }
+    },
+    "timestamp": "2026-07-06T03:36:00.975Z",
+    "id": "user_1783308960975"
   }
 ]
