@@ -4553,5 +4553,74 @@
     },
     "timestamp": "2026-07-06T06:55:51.886Z",
     "id": "user_1783320951887"
+  },
+  {
+    "part": "combined",
+    "answers": {
+      "court": {
+        "btnValue": "show",
+        "choice": "show",
+        "comment": ""
+      },
+      "style": {
+        "btnValue": "current",
+        "choice": "current",
+        "comment": ""
+      },
+      "ballfly": {
+        "btnValue": "yes",
+        "choice": "yes",
+        "comment": ""
+      },
+      "marker": {
+        "choice": "ring",
+        "btnValue": "ring",
+        "comment": ""
+      },
+      "speed": {
+        "choice": "0.5",
+        "btnValue": "0.5",
+        "comment": ""
+      },
+      "model": {
+        "choice": "whatever",
+        "followup": [],
+        "comment": "架拍朝向和球场不匹配，很违和"
+      },
+      "camera": {
+        "choice": "orbit",
+        "btnValue": "orbit",
+        "comment": ""
+      },
+      "data": {
+        "choices": [
+          "max_serve",
+          "max_speed",
+          "max_hit"
+        ],
+        "comment": "",
+        "choice": [
+          "max_serve",
+          "max_speed",
+          "max_hit"
+        ]
+      },
+      "chart": {
+        "choice": "stroke",
+        "btnValue": "stroke",
+        "comment": ""
+      },
+      "share": {
+        "choice": "maybe",
+        "followup": [
+          "moments",
+          "wechat",
+          "social"
+        ],
+        "comment": ""
+      }
+    },
+    "timestamp": "2026-07-06T08:16:51.718Z",
+    "id": "user_1783325811718"
   }
 ]
