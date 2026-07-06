@@ -2967,5 +2967,75 @@
     },
     "timestamp": "2026-07-06T03:26:50.691Z",
     "id": "user_1783308410691"
+  },
+  {
+    "part": "combined",
+    "answers": {
+      "court": {
+        "btnValue": "show",
+        "choice": "show",
+        "comment": ""
+      },
+      "style": {
+        "btnValue": "tube",
+        "choice": "tube",
+        "comment": "开始没看出 线条 和 管道的区别，答题时看文字描述才感觉到"
+      },
+      "ballfly": {
+        "choice": "whatever",
+        "btnValue": "yes",
+        "comment": "有飞出效果感觉击球点更准，但是飞出方向不真实要说明清楚"
+      },
+      "marker": {
+        "btnValue": "ring",
+        "choice": "ring",
+        "comment": ""
+      },
+      "speed": {
+        "btnValue": "0.5",
+        "choice": "0.5",
+        "comment": ""
+      },
+      "model": {
+        "choice": "uncomfortable",
+        "followup": [
+          "silhouette"
+        ],
+        "comment": ""
+      },
+      "camera": {
+        "btnValue": "orbit",
+        "choice": "orbit",
+        "comment": ""
+      },
+      "data": {
+        "choices": [
+          "max_serve",
+          "avg_speed",
+          "max_speed"
+        ],
+        "comment": "",
+        "choice": [
+          "max_serve",
+          "avg_speed",
+          "max_speed"
+        ]
+      },
+      "chart": {
+        "choice": "radar",
+        "btnValue": "radar",
+        "comment": "图表可选择，不同训练阶段关注信息不同"
+      },
+      "share": {
+        "choice": "unlikely",
+        "followup": [
+          "save",
+          "wechat"
+        ],
+        "comment": ""
+      }
+    },
+    "timestamp": "2026-07-06T03:25:48.610Z",
+    "id": "user_1783308348610"
   }
 ]
