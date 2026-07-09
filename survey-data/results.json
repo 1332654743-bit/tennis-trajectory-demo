@@ -5378,5 +5378,77 @@
     },
     "timestamp": "2026-07-08T03:23:38.337Z",
     "id": "user_1783481018338"
+  },
+  {
+    "part": "combined",
+    "answers": {
+      "court": {
+        "btnValue": "show",
+        "choice": "show",
+        "comment": ""
+      },
+      "style": {
+        "btnValue": "tube",
+        "choice": "tube",
+        "comment": ""
+      },
+      "ballfly": {
+        "btnValue": "yes",
+        "choice": "yes",
+        "comment": ""
+      },
+      "marker": {
+        "btnValue": "star",
+        "choice": "star",
+        "comment": ""
+      },
+      "speed": {
+        "btnValue": "0.5",
+        "choice": "0.5",
+        "comment": ""
+      },
+      "model": {
+        "choice": "uncomfortable",
+        "followup": [
+          "transparent"
+        ],
+        "comment": ""
+      },
+      "camera": {
+        "btnValue": "autocut",
+        "choice": "autocut",
+        "comment": ""
+      },
+      "data": {
+        "choices": [
+          "max_serve",
+          "max_rally",
+          "max_hit"
+        ],
+        "comment": "",
+        "choice": [
+          "max_serve",
+          "max_rally",
+          "max_hit"
+        ]
+      },
+      "chart": {
+        "btnValue": "radar",
+        "choice": "radar",
+        "comment": ""
+      },
+      "share": {
+        "choice": "maybe",
+        "followup": [
+          "moments",
+          "wechat",
+          "social",
+          "community"
+        ],
+        "comment": ""
+      }
+    },
+    "timestamp": "2026-07-09T10:23:05.684Z",
+    "id": "user_1783592585684"
   }
 ]
